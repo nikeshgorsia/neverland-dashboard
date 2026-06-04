@@ -12,16 +12,41 @@ def _get_secret(key):
     """Read from Streamlit secrets (cloud) or .env (local)."""
     try:
         import streamlit as st
-        return st.secrets.get(key) or os.getenv(key)
+        val = st.secrets.get(key)
+        if val:
+            return val
     except Exception:
-        return os.getenv(key)
+        pass
+    return os.getenv(key)
 
-TENANT_ID     = _get_secret("TENANT_ID")
-CLIENT_ID     = _get_secret("CLIENT_ID")
-CLIENT_SECRET = _get_secret("CLIENT_SECRET")
-FILE_URL      = _get_secret("SHAREPOINT_FILE_URL")
-BUDGET_URL    = _get_secret("BUDGET_FILE_URL")
-SCOPE_URL     = _get_secret("SCOPE_FILE_URL")
+def _get_credentials():
+    """Lazily load credentials so Streamlit secrets are available."""
+    return {
+        "TENANT_ID":     _get_secret("TENANT_ID"),
+        "CLIENT_ID":     _get_secret("CLIENT_ID"),
+        "CLIENT_SECRET": _get_secret("CLIENT_SECRET"),
+        "FILE_URL":      _get_secret("SHAREPOINT_FILE_URL"),
+        "BUDGET_URL":    _get_secret("BUDGET_FILE_URL"),
+        "SCOPE_URL":     _get_secret("SCOPE_FILE_URL"),
+    }
+
+# Keep module-level vars for backward compat — loaded lazily on first use
+TENANT_ID     = None
+CLIENT_ID     = None
+CLIENT_SECRET = None
+FILE_URL      = None
+BUDGET_URL    = None
+SCOPE_URL     = None
+
+def _load_globals():
+    global TENANT_ID, CLIENT_ID, CLIENT_SECRET, FILE_URL, BUDGET_URL, SCOPE_URL
+    creds = _get_credentials()
+    TENANT_ID     = creds["TENANT_ID"]
+    CLIENT_ID     = creds["CLIENT_ID"]
+    CLIENT_SECRET = creds["CLIENT_SECRET"]
+    FILE_URL      = creds["FILE_URL"]
+    BUDGET_URL    = creds["BUDGET_URL"]
+    SCOPE_URL     = creds["SCOPE_URL"]
 SCOPES        = ["https://graph.microsoft.com/Files.Read",
                  "https://graph.microsoft.com/Sites.Read.All"]
 CACHE_FILE    = os.path.expanduser("~/.neverland_token_cache.bin")
@@ -45,6 +70,7 @@ def _save_cache(cache):
 
 
 def get_device_flow():
+    _load_globals()
     cache = _load_cache()
     app = PublicClientApplication(
         CLIENT_ID,
@@ -85,6 +111,7 @@ def _clean_value(val):
 
 
 def _download_raw(token):
+    _load_globals()
     headers = {"Authorization": f"Bearer {token}"}
     sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
     resp = requests.get(
@@ -112,6 +139,7 @@ def get_raw_sheet(content: bytes):
 
 
 def _fetch_sheet_via_graph(token: str) -> pd.DataFrame:
+    _load_globals()
     """Use Graph Excel API to get formula-evaluated values from Grand Summary."""
     headers = {"Authorization": f"Bearer {token}"}
     sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
@@ -141,6 +169,7 @@ def _fetch_sheet_via_graph(token: str) -> pd.DataFrame:
 
 
 def _get_drive_item(token: str):
+    _load_globals()
     """Return (headers, drive_id, item_id) for the pipeline file."""
     hdrs = {"Authorization": f"Bearer {token}"}
     sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
@@ -381,11 +410,13 @@ def parse_grand_summary(content: bytes, token: str = None) -> dict:
 
 
 def fetch_pipeline(token: str) -> dict:
+    _load_globals()
     content = _download_raw(token)
     return parse_grand_summary(content, token=token)
 
 
 def fetch_capacity(token: str) -> pd.DataFrame:
+    _load_globals()
     """
     Read Capacity full team sheet, group by department (col B), sum by month.
     Returns long-format DataFrame: Department, Month, Value
@@ -504,6 +535,7 @@ SCOPE_DEPT_MAP = {
 }
 
 def fetch_scope(token: str) -> pd.DataFrame:
+    _load_globals()
     """
     Read each department sheet from the Scope Tracker.
     Returns long-format DataFrame: Department, Month, Chargeout
@@ -673,6 +705,7 @@ def fetch_raw(token: str):
 
 
 def fetch_budget(token: str) -> dict:
+    _load_globals()
     """
     Fetch the P&L from the Budget file (2nd sheet: Summary).
     Returns dict with keys: Total income, Total staff costs,
