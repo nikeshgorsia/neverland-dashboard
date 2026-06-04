@@ -15,9 +15,12 @@ NV_DARK    = "#1A1A1A"
 NV_LIGHT   = "#F9F9F9"
 NV_GREY    = "#F0F0F0"
 
-# Load Futura PT font faces
-with open("assets/futura_fonts.css", "r") as _f:
-    _font_css = _f.read()
+# Load Futura PT font faces (only available locally, not on cloud)
+try:
+    with open("assets/futura_fonts.css", "r") as _f:
+        _font_css = _f.read()
+except FileNotFoundError:
+    _font_css = ""
 
 # Load loading background
 import base64 as _b64
