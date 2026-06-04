@@ -749,12 +749,14 @@ with tab_cap:
         dept_pivot = dept_pivot.reindex(columns=MONTHS, fill_value=0)
         dept_pivot["Total"] = dept_pivot[MONTHS].sum(axis=1)
         dept_pivot = dept_pivot.sort_values("Total", ascending=False)
+        dept_pivot.index.name = "Department"
 
         # Add grand total row
         grand_total = pd.DataFrame(
             [{m: dept_pivot[m].sum() for m in MONTHS + ["Total"]}],
             index=["Grand Total"]
         )
+        grand_total.index.name = "Department"
         dept_with_total = pd.concat([dept_pivot, grand_total])
 
         for col in MONTHS + ["Total"]:
@@ -765,7 +767,10 @@ with tab_cap:
                 return ["font-weight:bold; background-color:#f0f0f0"] * len(row)
             return ["font-weight:bold" if c == "Total" else "" for c in row.index]
 
-        st.dataframe(dept_with_total.style.apply(style_dept, axis=1), use_container_width=True)
+        st.dataframe(
+            dept_with_total.style.apply(style_dept, axis=1),
+            use_container_width=True,
+        )
 
         # Cost breakdown — by Job Title or by Person
         st.divider()
