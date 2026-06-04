@@ -514,6 +514,10 @@ with tab_pipeline:
             grand_vals = {m: summary[m].sum() for m in MONTHS}
             grand_vals["Total"] = summary["Total"].sum()
             grand_df = pd.DataFrame([{"Client": "Grand Total", **{m: fmt_gbp(v) for m, v in grand_vals.items()}}])
+            st.markdown("""
+            <style>
+            div[data-testid="stDataFrame"]:last-of-type thead { display: none; }
+            </style>""", unsafe_allow_html=True)
             st.dataframe(
                 grand_df.style.set_properties(**{"font-weight": "bold", "background-color": "#f0f0f0"}),
                 use_container_width=True, hide_index=True,
