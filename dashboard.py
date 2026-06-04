@@ -585,17 +585,20 @@ with tab_pl:
         st.subheader("P&L by Month")
 
         def style_pl_row(row):
+            bold_rows = ["Total Income", "Operating Profit Margin"]
             styles = []
             for val in row:
                 s = str(val).replace("£", "").replace(",", "").replace("%", "").strip()
+                base = "font-weight:bold" if row.name in bold_rows else ""
                 try:
                     n = float(s)
                     if row.name in ["Net Profit", "Operating Profit Margin"]:
-                        styles.append("color: #c0392b" if n < 0 else "color: #27ae60")
+                        color = "color:#c0392b" if n < 0 else "color:#27ae60"
+                        styles.append(f"{base}; {color}" if base else color)
                     else:
-                        styles.append("")
+                        styles.append(base)
                 except ValueError:
-                    styles.append("")
+                    styles.append(base)
             return styles
 
         pl_table = pd.DataFrame({
