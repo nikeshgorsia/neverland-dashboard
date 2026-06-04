@@ -575,10 +575,13 @@ with tab_pl:
 
         # KPIs
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Total Income",       f"£{sum(income):,.0f}")
-        k2.metric("Total Staff Costs",  f"£{sum(staff):,.0f}")
-        k3.metric("Total Office Costs", f"£{sum(office):,.0f}")
-        k4.metric("Annual Net Profit",  f"£{sum(net_profit):,.0f}")
+        total_inc = sum(income)
+        pct = lambda v: f"{v/total_inc*100:.1f}%" if total_inc else "—"
+
+        k1.metric("Total Income",       f"£{total_inc:,.0f}",       delta="100%")
+        k2.metric("Total Staff Costs",  f"£{sum(staff):,.0f}",      delta=pct(sum(staff)))
+        k3.metric("Total Office Costs", f"£{sum(office):,.0f}",     delta=pct(sum(office)))
+        k4.metric("Annual Net Profit",  f"£{sum(net_profit):,.0f}", delta=pct(sum(net_profit)))
 
         st.divider()
 
