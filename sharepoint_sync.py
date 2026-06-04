@@ -8,12 +8,20 @@ from msal import PublicClientApplication, SerializableTokenCache
 
 load_dotenv()
 
-TENANT_ID     = os.getenv("TENANT_ID")
-CLIENT_ID     = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-FILE_URL      = os.getenv("SHAREPOINT_FILE_URL")
-BUDGET_URL    = os.getenv("BUDGET_FILE_URL")
-SCOPE_URL     = os.getenv("SCOPE_FILE_URL")
+def _get_secret(key):
+    """Read from Streamlit secrets (cloud) or .env (local)."""
+    try:
+        import streamlit as st
+        return st.secrets.get(key) or os.getenv(key)
+    except Exception:
+        return os.getenv(key)
+
+TENANT_ID     = _get_secret("TENANT_ID")
+CLIENT_ID     = _get_secret("CLIENT_ID")
+CLIENT_SECRET = _get_secret("CLIENT_SECRET")
+FILE_URL      = _get_secret("SHAREPOINT_FILE_URL")
+BUDGET_URL    = _get_secret("BUDGET_FILE_URL")
+SCOPE_URL     = _get_secret("SCOPE_FILE_URL")
 SCOPES        = ["https://graph.microsoft.com/Files.Read",
                  "https://graph.microsoft.com/Sites.Read.All"]
 CACHE_FILE    = os.path.expanduser("~/.neverland_token_cache.bin")
