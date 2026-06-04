@@ -497,20 +497,25 @@ with tab_pipeline:
             summary["Total"] = summary[MONTHS].sum(axis=1)
             summary = summary.sort_values("Total", ascending=False)
 
-            # Add grand total row
-            grand = pd.DataFrame([{"Client": "Grand Total", **{m: summary[m].sum() for m in MONTHS}, "Total": summary["Total"].sum()}])
-            summary_with_total = pd.concat([summary, grand], ignore_index=True)
-
+            # Format client rows
+            summary_display = summary.copy()
             for m in MONTHS + ["Total"]:
-                summary_with_total[m] = summary_with_total[m].apply(fmt_gbp)
+                summary_display[m] = summary_display[m].apply(fmt_gbp)
 
-            def bold_grand(row):
-                if row["Client"] == "Grand Total":
-                    return ["font-weight:bold; background-color:#f0f0f0"] * len(row)
+            def bold_total_col(row):
                 return ["font-weight:bold" if c == "Total" else "" for c in row.index]
 
             st.dataframe(
-                summary_with_total.style.apply(bold_grand, axis=1),
+                summary_display.style.apply(bold_total_col, axis=1),
+                use_container_width=True, hide_index=True,
+            )
+
+            # Grand total pinned at bottom
+            grand_vals = {m: summary[m].sum() for m in MONTHS}
+            grand_vals["Total"] = summary["Total"].sum()
+            grand_df = pd.DataFrame([{"Client": "Grand Total", **{m: fmt_gbp(v) for m, v in grand_vals.items()}}])
+            st.dataframe(
+                grand_df.style.set_properties(**{"font-weight": "bold", "background-color": "#f0f0f0"}),
                 use_container_width=True, hide_index=True,
             )
 
