@@ -90,6 +90,10 @@ st.markdown(f"""
         color: #FFFFFF !important;
         font-weight: 700 !important;
     }}
+    [data-testid="stMetricDelta"] {{
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+    }}
 
     /* Sidebar buttons — pink */
     [data-testid="stSidebar"] .stButton > button {{
@@ -582,13 +586,14 @@ with tab_pl:
 
         # KPIs
         k1, k2, k3, k4 = st.columns(4)
-        total_inc = sum(income)
-        pct = lambda v: f"{v/total_inc*100:.1f}%" if total_inc else "—"
+        total_inc  = sum(income)
+        total_np   = sum(net_profit)
+        pct        = lambda v: f"{v/total_inc*100:.1f}%" if total_inc else "—"
 
-        k1.metric("Total Income",       f"£{total_inc:,.0f}",       delta="100%")
-        k2.metric("Total Staff Costs",  f"£{sum(staff):,.0f}",      delta=pct(sum(staff)))
-        k3.metric("Total Office Costs", f"£{sum(office):,.0f}",     delta=pct(sum(office)))
-        k4.metric("Annual Net Profit",  f"£{sum(net_profit):,.0f}", delta=pct(sum(net_profit)))
+        k1.metric("Total Income",       f"£{total_inc:,.0f}")
+        k2.metric("Total Staff Costs",  f"£{sum(staff):,.0f}",      delta=pct(sum(staff)),   delta_color="off")
+        k3.metric("Total Office Costs", f"£{sum(office):,.0f}",     delta=pct(sum(office)),  delta_color="off")
+        k4.metric("Annual Net Profit",  f"£{total_np:,.0f}",        delta=pct(total_np),     delta_color="normal" if total_np >= 0 else "inverse")
 
         st.divider()
 
