@@ -585,7 +585,7 @@ with tab_pl:
         st.subheader("P&L by Month")
 
         def style_pl_row(row):
-            bold_rows = ["Total Income", "Operating Profit Margin"]
+            bold_rows = ["Total Income", "Net Profit", "Operating Profit Margin"]
             styles = []
             for val in row:
                 s = str(val).replace("£", "").replace(",", "").replace("%", "").strip()
