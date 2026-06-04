@@ -79,12 +79,16 @@ st.markdown(f"""
         border-bottom: 3px solid {NV_PINK} !important;
     }}
 
-    /* Metric cards — pink left border */
+    /* Metric cards — black background, white text */
     [data-testid="stMetric"] {{
-        background: {NV_GREY};
+        background: {NV_DARK} !important;
         border-radius: 8px;
         padding: 12px 16px;
         border-left: 4px solid {NV_PINK};
+    }}
+    [data-testid="stMetricLabel"] p {{
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
     }}
 
     /* Sidebar buttons — pink */
