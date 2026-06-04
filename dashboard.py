@@ -668,7 +668,7 @@ with tab_bva:
         k1.metric("Budget Total",  f"£{budget_monthly.sum():,.0f}")
         k2.metric("Actual Total",  f"£{actual_monthly.sum():,.0f}")
         var_total = actual_monthly.sum() - budget_monthly.sum()
-        k3.metric("Variance",      f"£{var_total:,.0f}", delta=f"£{var_total:,.0f}")
+        k3.metric("Variance",      f"£{var_total:,.0f}")
 
         st.divider()
         st.subheader("Budget vs Actual by Month")
