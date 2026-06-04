@@ -894,11 +894,13 @@ with tab_scope:
                 "Q4 (Oct-Dec)": ["Oct", "Nov", "Dec"],
             }
 
-            sc1, sc2 = st.columns(2)
+            sc1, sc2, sc3 = st.columns(3)
             with sc1:
                 quarter = st.selectbox("Quarter", list(QUARTERS.keys()), key="scope_quarter")
             with sc2:
                 scope_staff = st.selectbox("Staff type", ["All", "Full Time", "Freelancer"], key="scope_staff")
+            with sc3:
+                scope_cat = st.selectbox("Category", ["All", "Client", "New Biz", "Client (not recovered)"], key="scope_cat")
 
             q_months = QUARTERS[quarter]
 
@@ -910,7 +912,9 @@ with tab_scope:
             cap_by_dept.columns = ["Department", "Capacity Cost"]
 
             # Filter scope
-            scope_filt    = scope_df[scope_df["Month"].isin(q_months)]
+            scope_filt = scope_df[scope_df["Month"].isin(q_months)]
+            if scope_cat != "All" and "Category" in scope_filt.columns:
+                scope_filt = scope_filt[scope_filt["Category"] == scope_cat]
             scope_by_dept = scope_filt.groupby("Department")["Chargeout"].sum().reset_index()
             scope_by_dept.columns = ["Department", "Chargeout"]
 
