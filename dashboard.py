@@ -55,6 +55,9 @@ st.markdown(f"""
     h1, h2, h3, h4, [data-testid="stMetricValue"] {{
         font-family: 'FuturaPT-Bold', sans-serif !important;
     }}
+    [data-testid="stMetricValue"] {{
+        color: {NV_PINK} !important;
+    }}
 
     /* Hide Stop and Deploy buttons, keep 3-dot menu */
     [data-testid="stToolbarActions"] button:not([aria-label="Open menu"]) {{
