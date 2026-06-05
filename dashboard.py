@@ -256,6 +256,9 @@ with st.sidebar:
                         st.session_state["last_refresh"] = time.time()
                         st.session_state.pop("sp_flow", None)
                         st.success("✅ Pipeline loaded!")
+                        # Show token cache for saving to Streamlit secrets
+                        if "_token_cache_str" in st.session_state:
+                            st.session_state["_show_token_setup"] = True
                         st.rerun()
                 else:
                     st.session_state["sp_flow"] = (app, flow)
@@ -309,6 +312,16 @@ with st.sidebar:
         import datetime
         ts = datetime.datetime.fromtimestamp(st.session_state["last_refresh"]).strftime("%H:%M:%S")
         st.caption(f"Last updated: {ts}")
+
+    # One-time token setup helper
+    if st.session_state.get("_show_token_setup") and "_token_cache_str" in st.session_state:
+        with st.expander("⚙️ Save login for future sessions", expanded=True):
+            st.caption("To avoid signing in every time, add this to your Streamlit secrets:")
+            st.code(f'TOKEN_CACHE = {repr(st.session_state["_token_cache_str"])}', language="toml")
+            st.caption("Go to share.streamlit.io → your app → ⋮ → Settings → Secrets → paste above → Save")
+            if st.button("✅ Done, dismiss", key="dismiss_token"):
+                st.session_state.pop("_show_token_setup", None)
+                st.rerun()
 
     st.divider()
 

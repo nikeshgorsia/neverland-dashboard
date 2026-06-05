@@ -59,14 +59,37 @@ SECTIONS = ["CONFIRMED", "PROPOSED", "POTENTIAL", "ACCOUNT PLANNING", "SPECULATI
 
 def _load_cache():
     cache = SerializableTokenCache()
+    # 1. Try Streamlit secrets (cloud)
+    try:
+        import streamlit as st
+        cached = st.secrets.get("TOKEN_CACHE") or st.session_state.get("_token_cache")
+        if cached:
+            cache.deserialize(cached)
+            return cache
+    except Exception:
+        pass
+    # 2. Fall back to local file
     if os.path.exists(CACHE_FILE):
         cache.deserialize(open(CACHE_FILE).read())
     return cache
 
 
 def _save_cache(cache):
-    if cache.has_state_changed:
-        open(CACHE_FILE, "w").write(cache.serialize())
+    if not cache.has_state_changed:
+        return
+    serialized = cache.serialize()
+    # Save to local file
+    try:
+        open(CACHE_FILE, "w").write(serialized)
+    except Exception:
+        pass
+    # Save to Streamlit session state for persistence within session
+    try:
+        import streamlit as st
+        st.session_state["_token_cache"] = serialized
+        st.session_state["_token_cache_str"] = serialized  # expose for secrets setup
+    except Exception:
+        pass
 
 
 def get_device_flow():
