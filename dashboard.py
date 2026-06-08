@@ -1150,7 +1150,47 @@ with tab_scope:
                     return ["font-weight:bold; background-color:#f0f0f0"] * len(row)
                 return [""] * len(row)
 
-            st.dataframe(
+            st.caption("💡 Click a row to see the breakdown by person")
+            sel_summary = st.dataframe(
                 display.style.apply(bold_total, axis=1),
                 use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row", key="summary_sel"
             )
+
+            # Drilldown by person for selected department
+            if sel_summary and sel_summary.get("selection", {}).get("rows"):
+                row_idx  = sel_summary["selection"]["rows"][0]
+                sel_dept = display.iloc[row_idx]["Department"]
+                if sel_dept != "Grand Total" and "capacity" in st.session_state:
+                    cap_df2   = st.session_state["capacity"]
+                    scope_df2 = st.session_state.get("scope", pd.DataFrame())
+
+                    st.markdown(f"### 👤 {sel_dept} — Breakdown by Person ({table_months[0]}–{table_months[-1]})")
+
+                    # Capacity by person
+                    dept_cap = cap_df2[
+                        (cap_df2["Department"] == sel_dept) &
+                        (cap_df2["Month"].isin(table_months))
+                    ]
+                    if "Staff Type" in dept_cap.columns and scope_staff != "All":
+                        dept_cap = dept_cap[dept_cap["Staff Type"] == scope_staff]
+                    cap_person = dept_cap.groupby("Employee")["Cost"].sum().reset_index()
+                    cap_person.columns = ["Person", "Capacity Cost"]
+                    cap_person["Capacity Cost"] = cap_person["Capacity Cost"].apply(lambda v: f"£{v:,.0f}")
+
+                    # Chargeout by person
+                    if not scope_df2.empty and "Category" in scope_df2.columns:
+                        dept_scope = scope_df2[
+                            (scope_df2["Department"] == sel_dept) &
+                            (scope_df2["Month"].isin(table_months))
+                        ]
+                        if scope_cat != "All":
+                            dept_scope = dept_scope[dept_scope["Category"] == scope_cat]
+                        scope_person = dept_scope.groupby("Employee")["Chargeout"].sum().reset_index()
+                        scope_person.columns = ["Person", "Chargeout"]
+                        scope_person["Chargeout"] = scope_person["Chargeout"].apply(lambda v: f"£{v:,.0f}")
+                        person_df = pd.merge(cap_person, scope_person, on="Person", how="outer").fillna("£0")
+                    else:
+                        person_df = cap_person
+
+                    st.dataframe(person_df, use_container_width=True, hide_index=True)
