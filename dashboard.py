@@ -1174,8 +1174,11 @@ with tab_scope:
             gross_profit_raw = display["Gross Profit"].copy()
 
             # Merge Target Multiplier into Capacity Cost column
-            raw_cap = merged_range.set_index("Department")["Capacity Cost"]
-            raw_sal = merged_range.set_index("Department")["Total Staff Costs"]
+            raw_cap = merged_range.set_index("Department")["Capacity Cost"].to_dict()
+            raw_sal = merged_range.set_index("Department")["Total Staff Costs"].to_dict()
+            raw_cap["Grand Total"] = total_cap
+            raw_sal["Grand Total"] = total_sal
+
             def fmt_cap(row):
                 dept = row["Department"]
                 cap = raw_cap.get(dept, 0)
