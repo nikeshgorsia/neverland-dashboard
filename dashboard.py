@@ -1104,11 +1104,13 @@ with tab_scope:
             # Summary table
             st.subheader("Summary Table")
 
-            t1, t2 = st.columns(2)
+            t1, t2, t3 = st.columns(3)
             with t1:
                 from_month = st.selectbox("From month", MONTHS, index=0, key="table_from")
             with t2:
                 to_month = st.selectbox("To month", MONTHS, index=11, key="table_to")
+            with t3:
+                table_cat = st.selectbox("Chargeout category", ["All", "Client", "New Biz", "Client (not recovered)"], key="table_cat")
 
             from_idx  = MONTHS.index(from_month)
             to_idx    = MONTHS.index(to_month)
@@ -1117,9 +1119,13 @@ with tab_scope:
             table_months = MONTHS[from_idx:to_idx + 1]
 
             # Recalculate for selected month range
-            cap_range   = cap_filt[cap_filt["Month"].isin(table_months)].groupby("Department")["Cost"].sum().reset_index()
+            cap_range  = cap_filt[cap_filt["Month"].isin(table_months)].groupby("Department")["Cost"].sum().reset_index()
             cap_range.columns = ["Department", "Capacity Cost"]
-            scope_range = scope_filt[scope_filt["Month"].isin(table_months)].groupby("Department")["Chargeout"].sum().reset_index()
+
+            scope_table = scope_filt[scope_filt["Month"].isin(table_months)]
+            if table_cat != "All" and "Category" in scope_table.columns:
+                scope_table = scope_table[scope_table["Category"] == table_cat]
+            scope_range = scope_table.groupby("Department")["Chargeout"].sum().reset_index()
             merged_range = pd.merge(cap_range, scope_range, on="Department", how="outer").fillna(0)
             merged_range["Variance"]    = merged_range["Chargeout"] - merged_range["Capacity Cost"]
             merged_range["Utilisation"] = (merged_range["Chargeout"] / merged_range["Capacity Cost"] * 100).replace([float("inf"), float("nan")], 0)
