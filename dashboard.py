@@ -1188,7 +1188,19 @@ with tab_scope:
             display["Capacity Cost"] = display.apply(fmt_cap, axis=1)
             display["Total Staff Costs"] = display["Total Staff Costs"].apply(lambda v: f"£{v:,.0f}")
             display["Chargeout"]         = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
-            display["Gross Profit"]      = display["Gross Profit"].apply(lambda v: f"£{v:,.0f}")
+            raw_mult = merged_range.set_index("Department")["Multiplier"].to_dict()
+            raw_mult["Grand Total"] = total_char / total_sal if total_sal else 0
+
+            def fmt_gp(row):
+                dept = row["Department"]
+                gp   = gross_profit_raw.iloc[display.index.get_loc(row.name)] if row.name in display.index else row["Gross Profit"]
+                mult = raw_mult.get(dept, 0)
+                mult_str = f" ({mult:.2f}x)" if mult else ""
+                try:
+                    return f"£{float(gp):,.0f}{mult_str}"
+                except (ValueError, TypeError):
+                    return f"{gp}{mult_str}"
+            display["Gross Profit"] = display.apply(fmt_gp, axis=1)
             display["Multiplier"]        = display["Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Utilisation"]       = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
 
