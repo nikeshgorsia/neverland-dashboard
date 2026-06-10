@@ -721,7 +721,7 @@ def fetch_salary_by_dept(token: str) -> pd.DataFrame:
         "account management": "Account Management",
         "creative":           "Creative",
         "design":             "Design",
-        "office services":    "Business Affairs",
+        "office services":    "Office Services",
         "management":         "Management",
         "production":         "Production",
         "strategy":           "Strategy",
