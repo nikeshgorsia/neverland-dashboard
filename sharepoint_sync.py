@@ -690,6 +690,67 @@ def fetch_scope_structure_debug(token: str) -> list:
     return [{"row": i, "col_A": str(r[0]) if r else ""} for i, r in enumerate(rows)]
 
 
+def fetch_salary_by_dept(token: str) -> pd.DataFrame:
+    """
+    Read Salary Forecast tab and return monthly salary costs by department.
+    Returns DataFrame: Department, Month, Salary
+    """
+    _load_globals()
+    hdrs = {"Authorization": f"Bearer {token}"}
+    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(BUDGET_URL.encode()).decode().rstrip('=')}"
+    resp = requests.get(f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem", headers=hdrs, timeout=10)
+    if resp.status_code != 200:
+        raise ValueError(f"Cannot access budget file: {resp.text[:200]}")
+    item = resp.json()
+    drive_id = item["parentReference"]["driveId"]
+    item_id  = item["id"]
+
+    sheets = requests.get(f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets", headers=hdrs, timeout=10).json()["value"]
+    sal_sheet = next(s for s in sheets if "salary" in s["name"].lower())
+    sheet_enc = requests.utils.quote(sal_sheet["name"], safe="")
+    rows = requests.get(
+        f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets/{sheet_enc}/usedRange",
+        headers=hdrs, timeout=15
+    ).json().get("values", [])
+
+    # Monthly cols start at index 14 (Jan-Dec)
+    MONTH_COL_START = 14
+
+    # Map dept total row keywords → dashboard department names
+    DEPT_MAP = {
+        "management":       "Management",
+        "creative":         "Creative",
+        "strategy":         "Strategy",
+        "design":           "Design",
+        "production":       "Production",
+        "client service":   "Account Management",
+        "client se":        "Account Management",
+        "operation":        "Business Affairs",
+    }
+
+    result_rows = []
+    for row in rows:
+        if not row or not row[0]:
+            continue
+        label = str(row[0]).strip().lower()
+        if not label.startswith("total"):
+            continue
+        if "salari" not in label and "salaries" not in label:
+            continue
+        # Match to department
+        dept = next((v for k, v in DEPT_MAP.items() if k in label), None)
+        if not dept:
+            continue
+        # Read Jan-Dec monthly values
+        for mi, m in enumerate(MONTHS):
+            col = MONTH_COL_START + mi
+            val = _clean_value(row[col] if col < len(row) else None)
+            if val != 0:
+                result_rows.append({"Department": dept, "Month": m, "Salary": val})
+
+    return pd.DataFrame(result_rows)
+
+
 def fetch_scope_debug(token: str) -> dict:
     """Fetch raw data from first sheet of scope tracker for debugging."""
     hdrs = {"Authorization": f"Bearer {token}"}

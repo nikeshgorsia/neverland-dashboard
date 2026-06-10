@@ -112,7 +112,7 @@ st.markdown(f"""
 import time
 
 try:
-    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug
+    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept
     SHAREPOINT_AVAILABLE = True
 except ImportError:
     SHAREPOINT_AVAILABLE = False
@@ -196,7 +196,8 @@ if SHAREPOINT_AVAILABLE and "sp_token" in st.session_state:
                     "pipeline": lambda: fetch_pipeline(token),
                     "budget":   lambda: fetch_budget(token),
                     "capacity": lambda: fetch_capacity(token),
-                    "scope":    lambda: fetch_scope(token),
+                    "scope":       lambda: fetch_scope(token),
+                    "salary_dept": lambda: fetch_salary_by_dept(token),
                 }
 
                 with ThreadPoolExecutor(max_workers=4) as executor:
@@ -291,7 +292,7 @@ with st.sidebar:
             else:
                 with st.spinner("Fetching budget, capacity & scope..."):
                     from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
-                    _tasks = {"budget": lambda: fetch_budget(token), "capacity": lambda: fetch_capacity(token), "scope": lambda: fetch_scope(token)}
+                    _tasks = {"budget": lambda: fetch_budget(token), "capacity": lambda: fetch_capacity(token), "scope": lambda: fetch_scope(token), "salary_dept": lambda: fetch_salary_by_dept(token)}
                     _errors = []
                     with ThreadPoolExecutor(max_workers=3) as _ex:
                         _futs = {_ex.submit(fn): k for k, fn in _tasks.items()}
@@ -1127,19 +1128,30 @@ with tab_scope:
                 scope_table = scope_table[scope_table["Category"] == table_cat]
             scope_range = scope_table.groupby("Department")["Chargeout"].sum().reset_index()
             merged_range = pd.merge(cap_range, scope_range, on="Department", how="outer").fillna(0)
-            merged_range["Variance"]    = merged_range["Chargeout"] - merged_range["Capacity Cost"]
+
+            # Add salary costs by department
+            if "salary_dept" in st.session_state and not st.session_state["salary_dept"].empty:
+                sal_df = st.session_state["salary_dept"]
+                sal_range = sal_df[sal_df["Month"].isin(table_months)].groupby("Department")["Salary"].sum().reset_index()
+                sal_range.columns = ["Department", "Total Staff Costs"]
+                merged_range = pd.merge(merged_range, sal_range, on="Department", how="left").fillna(0)
+            else:
+                merged_range["Total Staff Costs"] = 0
+            merged_range["Variance"]    = merged_range["Chargeout"] - merged_range["Total Staff Costs"]
             merged_range["Utilisation"] = (merged_range["Chargeout"] / merged_range["Capacity Cost"] * 100).replace([float("inf"), float("nan")], 0)
 
             display = merged_range.copy()
 
             # Add bold grand total row
             total_cap  = merged_range["Capacity Cost"].sum()
+            total_sal  = merged_range["Total Staff Costs"].sum()
             total_char = merged_range["Chargeout"].sum()
-            total_var  = total_char - total_cap
+            total_var  = total_char - total_sal
             total_util = (total_char / total_cap * 100) if total_cap else 0
             total_row  = pd.DataFrame([{
                 "Department":       "Grand Total",
                 "Capacity Cost":    total_cap,
+                "Total Staff Costs": total_sal,
                 "Chargeout":        total_char,
                 "Variance":         total_var,
                 "Utilisation":      total_util,
@@ -1148,13 +1160,16 @@ with tab_scope:
 
             # Rename columns for clarity
             display = display.rename(columns={
-                "Capacity Cost": "Total Staff Costs",
-                "Variance":      "Gross Profit",
+                "Variance": "Gross Profit",
             })
+            # Reorder columns
+            col_order = ["Department", "Capacity Cost", "Total Staff Costs", "Chargeout", "Gross Profit", "Utilisation"]
+            display = display[[c for c in col_order if c in display.columns]]
 
             # Store raw numeric values for colour coding before formatting
             gross_profit_raw = display["Gross Profit"].copy()
 
+            display["Capacity Cost"]     = display["Capacity Cost"].apply(lambda v: f"£{v:,.0f}")
             display["Total Staff Costs"] = display["Total Staff Costs"].apply(lambda v: f"£{v:,.0f}")
             display["Chargeout"]         = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
             display["Gross Profit"]      = display["Gross Profit"].apply(lambda v: f"£{v:,.0f}")
