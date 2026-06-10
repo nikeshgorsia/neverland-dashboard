@@ -1157,7 +1157,6 @@ with tab_scope:
                 "Total Staff Costs": total_sal,
                 "Chargeout":         total_char,
                 "Variance":          total_var,
-                "Target Multiplier":  total_cap / total_sal if total_sal else 0,
                 "Multiplier":         total_char / total_sal if total_sal else 0,
                 "Utilisation":       total_util,
             }])
@@ -1168,17 +1167,25 @@ with tab_scope:
                 "Variance": "Gross Profit",
             })
             # Reorder columns
-            col_order = ["Department", "Capacity Cost", "Target Multiplier", "Total Staff Costs", "Chargeout", "Gross Profit", "Multiplier", "Utilisation"]
+            col_order = ["Department", "Capacity Cost", "Total Staff Costs", "Chargeout", "Gross Profit", "Multiplier", "Utilisation"]
             display = display[[c for c in col_order if c in display.columns]]
 
             # Store raw numeric values for colour coding before formatting
             gross_profit_raw = display["Gross Profit"].copy()
 
-            display["Capacity Cost"]     = display["Capacity Cost"].apply(lambda v: f"£{v:,.0f}")
+            # Merge Target Multiplier into Capacity Cost column
+            raw_cap = merged_range.set_index("Department")["Capacity Cost"]
+            raw_sal = merged_range.set_index("Department")["Total Staff Costs"]
+            def fmt_cap(row):
+                dept = row["Department"]
+                cap = raw_cap.get(dept, 0)
+                sal = raw_sal.get(dept, 0)
+                mult = f" ({cap/sal:.2f}x)" if sal else ""
+                return f"£{cap:,.0f}{mult}"
+            display["Capacity Cost"] = display.apply(fmt_cap, axis=1)
             display["Total Staff Costs"] = display["Total Staff Costs"].apply(lambda v: f"£{v:,.0f}")
             display["Chargeout"]         = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
             display["Gross Profit"]      = display["Gross Profit"].apply(lambda v: f"£{v:,.0f}")
-            display["Target Multiplier"] = display["Target Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Multiplier"]        = display["Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Utilisation"]       = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
 
