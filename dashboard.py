@@ -1201,7 +1201,6 @@ with tab_scope:
                 except (ValueError, TypeError):
                     return f"{gp}{mult_str}"
             display["Gross Profit"] = display.apply(fmt_gp, axis=1)
-            display["Multiplier"]        = display["Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Utilisation"]       = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
 
             def bold_total(row):
