@@ -1131,7 +1131,8 @@ with tab_scope:
 
             # Add salary costs by department
             if "salary_dept" in st.session_state and not st.session_state["salary_dept"].empty:
-                sal_df = st.session_state["salary_dept"]
+                sal_df = st.session_state["salary_dept"].copy()
+                sal_df["Month"] = sal_df["Month"].astype(str)
                 sal_range = sal_df[sal_df["Month"].isin(table_months)].groupby("Department")["Salary"].sum().reset_index()
                 sal_range.columns = ["Department", "Total Staff Costs"]
                 merged_range = pd.merge(merged_range, sal_range, on="Department", how="left").fillna(0)
