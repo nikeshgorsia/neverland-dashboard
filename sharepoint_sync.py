@@ -713,37 +713,30 @@ def fetch_salary_by_dept(token: str) -> pd.DataFrame:
         headers=hdrs, timeout=15
     ).json().get("values", [])
 
-    # Monthly cols start at index 14 (Jan-Dec)
+    # Summary section: department rows with monthly actuals
+    # Col 1 = dept name, cols 14-25 = Jan-Dec actuals
     MONTH_COL_START = 14
 
-    # Map dept total row keywords → dashboard department names
     DEPT_MAP = {
-        "management":       "Management",
-        "creative":         "Creative",
-        "strategy":         "Strategy",
-        "design":           "Design",
-        "production":       "Production",
-        "client service":   "Account Management",
-        "client se":        "Account Management",
-        "operation":        "Business Affairs",
+        "account management": "Account Management",
+        "creative":           "Creative",
+        "design":             "Design",
+        "office services":    "Business Affairs",
+        "management":         "Management",
+        "production":         "Production",
+        "strategy":           "Strategy",
+        "social":             "Social",
+        "pr":                 "PR",
     }
 
     result_rows = []
     for row in rows:
-        if not row or not row[0]:
+        if not row or len(row) < 2 or not row[1]:
             continue
-        label = str(row[0]).strip().lower()
-        if not label.startswith("total"):
-            continue
-        if "sal" not in label:
-            continue
-        if "freelance" in label or "salaries" == label.strip():
-            continue
-        # Match to department
-        dept = next((v for k, v in DEPT_MAP.items() if k in label), None)
+        dept_raw = str(row[1]).strip().lower()
+        dept = next((v for k, v in DEPT_MAP.items() if dept_raw == k), None)
         if not dept:
             continue
-        # Read Jan-Dec monthly values
         for mi, m in enumerate(MONTHS):
             col = MONTH_COL_START + mi
             val = _clean_value(row[col] if col < len(row) else None)
