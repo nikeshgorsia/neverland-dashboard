@@ -1138,23 +1138,43 @@ with tab_scope:
             total_var  = total_char - total_cap
             total_util = (total_char / total_cap * 100) if total_cap else 0
             total_row  = pd.DataFrame([{
-                "Department":    "Grand Total",
-                "Capacity Cost": total_cap,
-                "Chargeout":     total_char,
-                "Variance":      total_var,
-                "Utilisation":   total_util,
+                "Department":       "Grand Total",
+                "Capacity Cost":    total_cap,
+                "Chargeout":        total_char,
+                "Variance":         total_var,
+                "Utilisation":      total_util,
             }])
             display = pd.concat([display, total_row], ignore_index=True)
 
-            display["Capacity Cost"] = display["Capacity Cost"].apply(lambda v: f"£{v:,.0f}")
-            display["Chargeout"]     = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
-            display["Variance"]      = display["Variance"].apply(lambda v: f"£{v:,.0f}")
-            display["Utilisation"]   = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
+            # Rename columns for clarity
+            display = display.rename(columns={
+                "Capacity Cost": "Total Staff Costs",
+                "Variance":      "Gross Profit",
+            })
+
+            # Store raw numeric values for colour coding before formatting
+            gross_profit_raw = display["Gross Profit"].copy()
+
+            display["Total Staff Costs"] = display["Total Staff Costs"].apply(lambda v: f"£{v:,.0f}")
+            display["Chargeout"]         = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
+            display["Gross Profit"]      = display["Gross Profit"].apply(lambda v: f"£{v:,.0f}")
+            display["Utilisation"]       = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
 
             def bold_total(row):
                 if row["Department"] == "Grand Total":
                     return ["font-weight:bold; background-color:#f0f0f0"] * len(row)
-                return [""] * len(row)
+                # Colour Gross Profit red/green
+                styles = []
+                for c in row.index:
+                    if c == "Gross Profit":
+                        try:
+                            raw = gross_profit_raw.iloc[display.index.get_loc(row.name)] if row.name in display.index else 0
+                            styles.append("color:#27ae60; font-weight:bold" if raw >= 0 else "color:#c0392b; font-weight:bold")
+                        except Exception:
+                            styles.append("")
+                    else:
+                        styles.append("")
+                return styles
 
             st.caption("💡 Click a row to see the breakdown by person")
             sel_summary = st.dataframe(
