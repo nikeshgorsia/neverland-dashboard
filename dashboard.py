@@ -1138,8 +1138,9 @@ with tab_scope:
                 merged_range = pd.merge(merged_range, sal_range, on="Department", how="left").fillna(0)
             else:
                 merged_range["Total Staff Costs"] = 0
-            merged_range["Variance"]    = merged_range["Chargeout"] - merged_range["Total Staff Costs"]
-            merged_range["Multiplier"]  = (merged_range["Chargeout"] / merged_range["Total Staff Costs"]).replace([float("inf"), float("nan")], 0)
+            merged_range["Variance"]          = merged_range["Chargeout"] - merged_range["Total Staff Costs"]
+            merged_range["Target Multiplier"] = (merged_range["Capacity Cost"] / merged_range["Total Staff Costs"]).replace([float("inf"), float("nan")], 0)
+            merged_range["Multiplier"]        = (merged_range["Chargeout"] / merged_range["Total Staff Costs"]).replace([float("inf"), float("nan")], 0)
             merged_range["Utilisation"] = (merged_range["Chargeout"] / merged_range["Capacity Cost"] * 100).replace([float("inf"), float("nan")], 0)
 
             display = merged_range.copy()
@@ -1156,7 +1157,8 @@ with tab_scope:
                 "Total Staff Costs": total_sal,
                 "Chargeout":         total_char,
                 "Variance":          total_var,
-                "Multiplier":        total_char / total_sal if total_sal else 0,
+                "Target Multiplier":  total_cap / total_sal if total_sal else 0,
+                "Multiplier":         total_char / total_sal if total_sal else 0,
                 "Utilisation":       total_util,
             }])
             display = pd.concat([display, total_row], ignore_index=True)
@@ -1166,7 +1168,7 @@ with tab_scope:
                 "Variance": "Gross Profit",
             })
             # Reorder columns
-            col_order = ["Department", "Capacity Cost", "Total Staff Costs", "Chargeout", "Gross Profit", "Multiplier", "Utilisation"]
+            col_order = ["Department", "Capacity Cost", "Target Multiplier", "Total Staff Costs", "Chargeout", "Gross Profit", "Multiplier", "Utilisation"]
             display = display[[c for c in col_order if c in display.columns]]
 
             # Store raw numeric values for colour coding before formatting
@@ -1176,6 +1178,7 @@ with tab_scope:
             display["Total Staff Costs"] = display["Total Staff Costs"].apply(lambda v: f"£{v:,.0f}")
             display["Chargeout"]         = display["Chargeout"].apply(lambda v: f"£{v:,.0f}")
             display["Gross Profit"]      = display["Gross Profit"].apply(lambda v: f"£{v:,.0f}")
+            display["Target Multiplier"] = display["Target Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Multiplier"]        = display["Multiplier"].apply(lambda v: f"{v:.2f}x" if v else "—")
             display["Utilisation"]       = display["Utilisation"].apply(lambda v: f"{v:.0f}%")
 
