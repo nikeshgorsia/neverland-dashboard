@@ -1167,7 +1167,7 @@ with tab_scope:
                 "Variance": "Gross Profit",
             })
             # Reorder columns
-            col_order = ["Department", "Capacity Cost", "Total Staff Costs", "Chargeout", "Gross Profit", "Multiplier", "Utilisation"]
+            col_order = ["Department", "Capacity Cost", "Total Staff Costs", "Chargeout", "Gross Profit", "Utilisation"]
             display = display[[c for c in col_order if c in display.columns]]
 
             # Store raw numeric values for colour coding before formatting
