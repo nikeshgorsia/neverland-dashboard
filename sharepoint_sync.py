@@ -735,7 +735,9 @@ def fetch_salary_by_dept(token: str) -> pd.DataFrame:
         label = str(row[0]).strip().lower()
         if not label.startswith("total"):
             continue
-        if "salari" not in label and "salaries" not in label:
+        if "sal" not in label:
+            continue
+        if "freelance" in label or "salaries" == label.strip():
             continue
         # Match to department
         dept = next((v for k, v in DEPT_MAP.items() if k in label), None)
