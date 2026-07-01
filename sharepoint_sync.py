@@ -801,7 +801,9 @@ def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
     """Save pipeline snapshot as JSON to GitHub repo. Returns date string used."""
     import json, base64, datetime
     if not date_str:
-        date_str = datetime.date.today().isoformat()
+        today = datetime.date.today()
+        monday = today - datetime.timedelta(days=today.weekday())  # w/c Monday
+        date_str = monday.isoformat()
     filename = f"snapshots/snapshot_{date_str}.json"
 
     serializable = {}

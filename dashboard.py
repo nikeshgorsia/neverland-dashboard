@@ -1349,16 +1349,25 @@ with tab_revenue:
         except Exception:
             snapshots = []
 
+        def _fmt_snap(date_str):
+            try:
+                import datetime as _dt2
+                d = _dt2.date.fromisoformat(date_str)
+                return f"w/c {d.strftime('%-d %b %Y')}"
+            except Exception:
+                return date_str
+
         if len(snapshots) < 1:
             st.info("No snapshots saved yet. Click **Save Weekly Snapshot** in the sidebar every Thursday to build up your history.", icon="📸")
         else:
+            snap_labels = {s: _fmt_snap(s) for s in snapshots}
             cmp1, cmp2 = st.columns(2)
             with cmp1:
-                snap_a_date = st.selectbox("Compare week", snapshots, index=0, key="snap_a")
+                snap_a_date = st.selectbox("Compare week", snapshots, index=0, key="snap_a", format_func=lambda s: snap_labels[s])
             with cmp2:
                 snap_b_options = [s for s in snapshots if s != snap_a_date]
                 if snap_b_options:
-                    snap_b_date = st.selectbox("With week", snap_b_options, index=0, key="snap_b")
+                    snap_b_date = st.selectbox("With week", snap_b_options, index=0, key="snap_b", format_func=lambda s: snap_labels[s])
                 else:
                     snap_b_date = None
                     st.info("Save at least 2 snapshots to compare.")
@@ -1382,6 +1391,9 @@ with tab_revenue:
                         totals_a = _snap_totals(snap_a, rv_keys)
                         totals_b = _snap_totals(snap_b, rv_keys)
 
+                        col_a = _fmt_snap(snap_a_date)
+                        col_b = _fmt_snap(snap_b_date)
+
                         all_clients = sorted(set(totals_a.index) | set(totals_b.index))
                         cmp_rows = []
                         for client in all_clients:
@@ -1391,8 +1403,8 @@ with tab_revenue:
                             pct    = (change / val_a * 100) if val_a else None
                             cmp_rows.append({
                                 "Client":           client,
-                                snap_a_date:        val_a,
-                                snap_b_date:        val_b,
+                                col_a:              val_a,
+                                col_b:              val_b,
                                 "Change (£)":       change,
                                 "Change (%)":       pct,
                                 "_change_raw":      change,
@@ -1406,8 +1418,8 @@ with tab_revenue:
                         new_clients  = cmp_df[cmp_df["_new"]]["Client"].tolist()
                         lost_clients = cmp_df[cmp_df["_lost"]]["Client"].tolist()
                         ck1, ck2, ck3 = st.columns(3)
-                        ck1.metric(f"Revenue {snap_a_date}", fmt_gbp(cmp_df[snap_a_date].sum()))
-                        ck2.metric(f"Revenue {snap_b_date}", fmt_gbp(cmp_df[snap_b_date].sum()), delta=fmt_gbp(total_change))
+                        ck1.metric(col_a, fmt_gbp(cmp_df[col_a].sum()))
+                        ck2.metric(col_b, fmt_gbp(cmp_df[col_b].sum()), delta=fmt_gbp(total_change))
                         ck3.metric("Clients changed", len(cmp_df[cmp_df["Change (£)"] != 0]))
 
                         if new_clients:
@@ -1416,9 +1428,9 @@ with tab_revenue:
                             st.warning(f"No longer active: {', '.join(lost_clients)}")
 
                         # Format display
-                        display_cmp = cmp_df[["Client", snap_a_date, snap_b_date, "Change (£)", "Change (%)"]].copy()
-                        display_cmp[snap_a_date]    = display_cmp[snap_a_date].apply(lambda v: fmt_gbp(v) if v else "—")
-                        display_cmp[snap_b_date]    = display_cmp[snap_b_date].apply(lambda v: fmt_gbp(v) if v else "—")
+                        display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)", "Change (%)"]].copy()
+                        display_cmp[col_a] = display_cmp[col_a].apply(lambda v: fmt_gbp(v) if v else "—")
+                        display_cmp[col_b] = display_cmp[col_b].apply(lambda v: fmt_gbp(v) if v else "—")
                         display_cmp["Change (£)"]   = display_cmp["Change (£)"].apply(lambda v: f"+{fmt_gbp(v)}" if v > 0 else (fmt_gbp(v) if v < 0 else "—"))
                         display_cmp["Change (%)"]   = display_cmp["Change (%)"].apply(
                             lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
