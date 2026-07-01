@@ -1351,10 +1351,18 @@ with tab_revenue:
         )
         # Highlight current month with a vertical line
         if cur_month_name in MONTHS:
-            fig_rv.add_vline(
-                x=cur_month_name, line_dash="dash",
-                line_color=NV_PINK, opacity=0.6,
-                annotation_text="Today", annotation_position="top",
+            col_idx = MONTHS.index(cur_month_name)
+            fig_rv.add_shape(
+                type="line",
+                x0=col_idx, x1=col_idx, y0=0, y1=1,
+                xref="x", yref="paper",
+                line=dict(color=NV_PINK, width=2, dash="dash"),
+                opacity=0.6,
+            )
+            fig_rv.add_annotation(
+                x=col_idx, y=1.02, xref="x", yref="paper",
+                text="Today", showarrow=False,
+                font=dict(color=NV_PINK, size=11),
             )
         st.plotly_chart(fig_rv, use_container_width=True)
 
