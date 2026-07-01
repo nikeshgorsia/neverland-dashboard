@@ -1344,12 +1344,14 @@ with tab_revenue:
 
         # ── Week-on-Week Comparison ───────────────────────────────────────────
         st.divider()
-        st.subheader("Week-on-Week Comparison")
+        st.subheader(f"Week-on-Week Comparison — {rv_period}")
 
-        try:
-            snapshots = list_pipeline_snapshots()
-        except Exception:
-            snapshots = []
+        if "snapshot_list" not in st.session_state:
+            try:
+                st.session_state["snapshot_list"] = list_pipeline_snapshots()
+            except Exception:
+                st.session_state["snapshot_list"] = []
+        snapshots = st.session_state["snapshot_list"]
 
         def _fmt_snap(date_str):
             try:
@@ -1394,7 +1396,7 @@ with tab_revenue:
                     snap_a = st.session_state[cache_key_a]
                     snap_b = st.session_state[cache_key_b]
 
-                    def _snap_totals(snap, keys):
+                    def _snap_totals(snap, keys, months):
                         frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
                         if not frames:
                             return pd.Series(dtype=float)
@@ -1402,11 +1404,11 @@ with tab_revenue:
                         for m in MONTHS:
                             if m in combined.columns:
                                 combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
-                        cols = [m for m in rv_months if m in combined.columns]
+                        cols = [m for m in months if m in combined.columns]
                         return combined.groupby("Client")[cols].sum().sum(axis=1)
 
-                    totals_a = _snap_totals(snap_a, rv_keys)
-                    totals_b = _snap_totals(snap_b, rv_keys)
+                    totals_a = _snap_totals(snap_a, rv_keys, rv_months)
+                    totals_b = _snap_totals(snap_b, rv_keys, rv_months)
 
                     col_a = _fmt_snap(snap_a_date)
                     col_b = _fmt_snap(snap_b_date)
