@@ -1349,14 +1349,6 @@ with tab_revenue:
             key="rv_client_sel",
         )
 
-        # Grand total row
-        grand_rv = {m: rv_by_client[m].sum() for m in rv_months}
-        grand_rv["Total"] = rv_by_client["Total"].sum()
-        grand_rv_df = pd.DataFrame([{"Client": "Grand Total", **{k: fmt_gbp(v) for k, v in grand_rv.items()}}])
-        st.dataframe(
-            grand_rv_df.style.set_properties(**{"font-weight": "bold", "background-color": "#f0f0f0"}),
-            use_container_width=True, hide_index=True,
-        )
 
         # ── Week-on-Week Comparison ───────────────────────────────────────────
         st.divider()
