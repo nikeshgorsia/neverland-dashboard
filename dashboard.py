@@ -1393,7 +1393,8 @@ with tab_revenue:
                             for m in MONTHS:
                                 if m in combined.columns:
                                     combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
-                            return combined.groupby("Client")[MONTHS].sum().sum(axis=1)
+                            cols = [m for m in rv_months if m in combined.columns]
+                            return combined.groupby("Client")[cols].sum().sum(axis=1)
 
                         totals_a = _snap_totals(snap_a, rv_keys)
                         totals_b = _snap_totals(snap_b, rv_keys)
