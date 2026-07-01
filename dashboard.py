@@ -408,7 +408,7 @@ def _clean_val(v):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 st.markdown(f"<h1 style='color:{NV_DARK}'>Neverland Dashboard</h1>", unsafe_allow_html=True)
-tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout"])
+tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope, tab_revenue = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout", "Revenue Tracker"])
 
 CATEGORY_COLORS = {
     "Confirmed Revenue": "#E0EAF6",
@@ -1263,3 +1263,236 @@ with tab_scope:
                         person_df = cap_person
 
                     st.dataframe(person_df, use_container_width=True, hide_index=True)
+
+# ── Revenue Tracker Tab ───────────────────────────────────────────────────────
+with tab_revenue:
+    if "pipeline" not in st.session_state or not section:
+        st.info("Click **Sync from SharePoint** in the sidebar to load your pipeline.", icon="ℹ️")
+    else:
+        pipeline = st.session_state["pipeline"]
+
+        # ── Controls ─────────────────────────────────────────────────────────
+        rv1, rv2, rv3 = st.columns([2, 2, 2])
+        with rv1:
+            rv_view = st.selectbox(
+                "Revenue type",
+                list(VIEW_OPTIONS.keys()),
+                index=list(VIEW_OPTIONS.keys()).index(st.session_state.get("pl_view_select", "Confirmed")),
+                key="rv_view_select",
+            )
+        rv_keys = VIEW_OPTIONS[rv_view]
+
+        # Build combined client × month table for selected revenue type
+        rv_frames = [
+            pipeline[k].copy()
+            for k in rv_keys
+            if k in pipeline and isinstance(pipeline[k], pd.DataFrame)
+        ]
+        if not rv_frames:
+            st.warning("No data found for selected revenue type.")
+            st.stop()
+
+        rv_combined = pd.concat(rv_frames, ignore_index=True)
+        rv_combined[MONTHS] = rv_combined[MONTHS].apply(pd.to_numeric, errors="coerce").fillna(0)
+        rv_by_client = rv_combined.groupby("Client", as_index=False)[MONTHS].sum()
+
+        # Apply client filter from sidebar
+        if selected_clients:
+            rv_by_client = rv_by_client[rv_by_client["Client"].isin(selected_clients)]
+
+        rv_by_client["Total"] = rv_by_client[MONTHS].sum(axis=1)
+        rv_by_client = rv_by_client.sort_values("Total", ascending=False).reset_index(drop=True)
+
+        # ── KPIs ─────────────────────────────────────────────────────────────
+        import datetime as _dt
+        cur_month_name = _dt.date.today().strftime("%b")
+        if cur_month_name not in MONTHS:
+            cur_month_name = MONTHS[0]
+
+        ytd_idx   = MONTHS.index(cur_month_name) + 1
+        ytd_months = MONTHS[:ytd_idx]
+        ytd_total  = rv_by_client[ytd_months].sum().sum()
+        cur_month_total = rv_by_client[cur_month_name].sum() if cur_month_name in rv_by_client.columns else 0
+        annual_total    = rv_by_client["Total"].sum()
+        top_client_name = rv_by_client.iloc[0]["Client"] if not rv_by_client.empty else "—"
+        top_client_rev  = rv_by_client.iloc[0]["Total"] if not rv_by_client.empty else 0
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Annual Revenue",      fmt_gbp(annual_total))
+        k2.metric(f"YTD ({cur_month_name})", fmt_gbp(ytd_total))
+        k3.metric(f"{cur_month_name} Revenue",  fmt_gbp(cur_month_total))
+        k4.metric("Top Client",          f"{top_client_name}  {fmt_gbp(top_client_rev)}")
+
+        st.divider()
+
+        # ── Chart: revenue by client per month ───────────────────────────────
+        st.subheader("Revenue by Client — Monthly")
+        rv_long = rv_by_client.melt(
+            id_vars="Client", value_vars=MONTHS, var_name="Month", value_name="Revenue"
+        )
+        rv_long["Month"] = pd.Categorical(rv_long["Month"], categories=MONTHS, ordered=True)
+        rv_long = rv_long[rv_long["Revenue"] > 0]
+        rv_long["Label"] = rv_long["Revenue"].apply(fmt_gbp)
+
+        rv_totals = rv_long.groupby("Month", observed=True)["Revenue"].sum()
+        rv_month_labels = [f"{m}<br><b>{fmt_gbp(rv_totals.get(m, 0))}</b>" for m in MONTHS]
+
+        fig_rv = px.bar(
+            rv_long, x="Month", y="Revenue", color="Client", text="Label",
+            template="plotly_white", height=480,
+            color_discrete_sequence=px.colors.qualitative.Safe,
+            labels={"Revenue": "Revenue (£)", "Month": ""},
+        )
+        fig_rv.update_traces(textposition="inside", textfont_size=10)
+        fig_rv.update_layout(
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+            xaxis=dict(tickvals=MONTHS, ticktext=rv_month_labels),
+            yaxis_tickprefix="£", yaxis_tickformat=",.0f", bargap=0.2,
+        )
+        # Highlight current month with a vertical line
+        if cur_month_name in MONTHS:
+            fig_rv.add_vline(
+                x=cur_month_name, line_dash="dash",
+                line_color=NV_PINK, opacity=0.6,
+                annotation_text="Today", annotation_position="top",
+            )
+        st.plotly_chart(fig_rv, use_container_width=True)
+
+        # ── Heatmap: client × month revenue ──────────────────────────────────
+        st.subheader("Revenue Heatmap — Client × Month")
+        heat_df = rv_by_client.set_index("Client")[MONTHS]
+
+        # Build text annotations
+        heat_text = heat_df.applymap(lambda v: fmt_gbp(v) if v > 0 else "")
+
+        fig_heat = go.Figure(data=go.Heatmap(
+            z=heat_df.values,
+            x=MONTHS,
+            y=heat_df.index.tolist(),
+            text=heat_text.values,
+            texttemplate="%{text}",
+            colorscale=[
+                [0.0,  "#f9f9f9"],
+                [0.01, "#fce4f0"],
+                [0.3,  "#f472b1"],
+                [0.7,  NV_PINK],
+                [1.0,  "#8B0045"],
+            ],
+            showscale=False,
+            hoverongaps=False,
+            hovertemplate="<b>%{y}</b><br>%{x}: £%{z:,.0f}<extra></extra>",
+        ))
+        fig_heat.update_layout(
+            template="plotly_white",
+            height=max(300, 60 + len(heat_df) * 40),
+            xaxis=dict(side="top"),
+            margin=dict(l=160, r=20, t=60, b=20),
+        )
+        # Highlight current month column
+        if cur_month_name in MONTHS:
+            col_idx = MONTHS.index(cur_month_name)
+            fig_heat.add_shape(
+                type="rect",
+                x0=col_idx - 0.5, x1=col_idx + 0.5,
+                y0=-0.5, y1=len(heat_df) - 0.5,
+                line=dict(color=NV_PINK, width=2),
+                fillcolor="rgba(0,0,0,0)",
+            )
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        # ── Client × Month detail table ───────────────────────────────────────
+        st.subheader("Client Revenue Table")
+        display_rv = rv_by_client.copy()
+        for m in MONTHS + ["Total"]:
+            display_rv[m] = display_rv[m].apply(lambda v: fmt_gbp(v) if v > 0 else "—")
+
+        def style_rv_row(row):
+            styles = []
+            for c in row.index:
+                if c == "Total":
+                    styles.append("font-weight:bold")
+                elif c == cur_month_name:
+                    styles.append(f"background-color:#fce4f0; font-weight:bold")
+                else:
+                    styles.append("")
+            return styles
+
+        sel_rv = st.dataframe(
+            display_rv.style.apply(style_rv_row, axis=1),
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+            key="rv_client_sel",
+        )
+
+        # ── Project drill-down ────────────────────────────────────────────────
+        st.caption("💡 Click a client row above to see their project breakdown")
+
+        if sel_rv and sel_rv.get("selection", {}).get("rows"):
+            row_idx_rv   = sel_rv["selection"]["rows"][0]
+            sel_client   = rv_by_client.iloc[row_idx_rv]["Client"]
+            sp_token     = st.session_state.get("sp_token")
+
+            st.markdown(f"### Projects — {sel_client}")
+
+            # Month selector for project drilldown
+            drilldown_cols = st.columns(len(MONTHS))
+            sel_drill_month = st.radio(
+                "Select month to drill into",
+                MONTHS,
+                index=MONTHS.index(cur_month_name),
+                horizontal=True,
+                key="rv_drill_month",
+            )
+
+            if sp_token:
+                with st.spinner(f"Loading {sel_client} projects for {sel_drill_month}..."):
+                    try:
+                        projects = fetch_client_projects(sp_token, sel_client, sel_drill_month)
+                        if not projects:
+                            st.info(f"No project-level data found for {sel_client} in {sel_drill_month}. This client may not have an individual sheet.")
+                        else:
+                            PROJ_SECTION_LABELS = {
+                                "CONFIRMED":       "Confirmed Revenue",
+                                "BILLED":          "Billed Revenue",
+                                "PROPOSED":        "Proposed",
+                                "POTENTIAL":       "Account Planning",
+                                "ACCOUNT PLANNING":"Account Planning",
+                                "SPECULATIVE":     "Speculative",
+                            }
+                            PROJ_SECTION_COLORS = {
+                                "CONFIRMED":       "#E0EAF6",
+                                "BILLED":          "#D5F0E0",
+                                "PROPOSED":        "#E4EFDC",
+                                "POTENTIAL":       "#FDF3D0",
+                                "ACCOUNT PLANNING":"#FDF3D0",
+                                "SPECULATIVE":     "#F0908A",
+                            }
+                            total_proj = 0
+                            for sec_key, proj_list in projects.items():
+                                sec_label = PROJ_SECTION_LABELS.get(sec_key, sec_key)
+                                sec_color = PROJ_SECTION_COLORS.get(sec_key, "#f0f0f0")
+                                st.markdown(
+                                    f"<div style='background:{sec_color};padding:8px 12px;"
+                                    f"border-radius:8px;font-weight:700;margin-top:12px'>"
+                                    f"{sec_label}</div>",
+                                    unsafe_allow_html=True,
+                                )
+                                proj_df = pd.DataFrame(proj_list).sort_values("Revenue", ascending=False)
+                                sec_total = proj_df["Revenue"].sum()
+                                total_proj += sec_total
+                                proj_df["Revenue"] = proj_df["Revenue"].apply(lambda v: f"£{v:,.0f}")
+                                st.dataframe(proj_df, use_container_width=True, hide_index=True)
+                                st.caption(f"Section total: **£{sec_total:,.0f}**")
+
+                            st.markdown(
+                                f"<div style='background:{NV_DARK};color:white;padding:10px 16px;"
+                                f"border-radius:8px;font-weight:700;margin-top:8px'>"
+                                f"Total {sel_drill_month}: £{total_proj:,.0f}</div>",
+                                unsafe_allow_html=True,
+                            )
+                    except Exception as e:
+                        st.error(f"Could not load project breakdown: {e}")
+            else:
+                st.info("Authenticate via SharePoint to see project-level breakdown.")
