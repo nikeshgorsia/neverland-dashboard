@@ -1,0 +1,28 @@
+name: Weekly Revenue Snapshot
+
+on:
+  schedule:
+    - cron: '0 18 * * 4'   # Every Thursday at 6pm UTC (= 6pm GMT / 7pm BST)
+  workflow_dispatch:         # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install msal requests pandas python-dotenv openpyxl
+
+      - name: Take snapshot
+        env:
+          TENANT_ID:            ${{ secrets.TENANT_ID }}
+          CLIENT_ID:            ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET:        ${{ secrets.CLIENT_SECRET }}
+          SHAREPOINT_FILE_URL:  ${{ secrets.SHAREPOINT_FILE_URL }}
+          GITHUB_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/take_snapshot.py
