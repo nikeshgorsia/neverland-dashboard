@@ -1280,13 +1280,35 @@ with tab_revenue:
         import datetime as _dt
         pipeline = st.session_state["pipeline"]
 
-        rv_view = st.selectbox(
-            "Revenue type",
-            list(VIEW_OPTIONS.keys()),
-            index=list(VIEW_OPTIONS.keys()).index(st.session_state.get("pl_view_select", "Confirmed")),
-            key="rv_view_select",
-        )
+        cur_month_name = _dt.date.today().strftime("%b")
+        if cur_month_name not in MONTHS:
+            cur_month_name = MONTHS[0]
+        cur_month_idx = MONTHS.index(cur_month_name)
+        cur_quarter_months = MONTHS[(cur_month_idx // 3) * 3 : (cur_month_idx // 3) * 3 + 3]
+
+        PERIOD_OPTIONS = {
+            "Current Month":   [cur_month_name],
+            "Current Quarter": cur_quarter_months,
+            "Full Year":       MONTHS,
+        }
+
+        rvc1, rvc2 = st.columns(2)
+        with rvc1:
+            rv_view = st.selectbox(
+                "Revenue type",
+                list(VIEW_OPTIONS.keys()),
+                index=list(VIEW_OPTIONS.keys()).index(st.session_state.get("pl_view_select", "Confirmed")),
+                key="rv_view_select",
+            )
+        with rvc2:
+            rv_period = st.selectbox(
+                "Period",
+                list(PERIOD_OPTIONS.keys()),
+                index=2,
+                key="rv_period_select",
+            )
         rv_keys = VIEW_OPTIONS[rv_view]
+        rv_months = PERIOD_OPTIONS[rv_period]
 
         rv_frames = [
             pipeline[k].copy()
@@ -1302,17 +1324,13 @@ with tab_revenue:
         rv_by_client = rv_combined.groupby("Client", as_index=False)[MONTHS].sum()
         if selected_clients:
             rv_by_client = rv_by_client[rv_by_client["Client"].isin(selected_clients)]
-        rv_by_client["Total"] = rv_by_client[MONTHS].sum(axis=1)
-        rv_by_client = rv_by_client.sort_values("Total", ascending=False).reset_index(drop=True)
-
-        cur_month_name = _dt.date.today().strftime("%b")
-        if cur_month_name not in MONTHS:
-            cur_month_name = MONTHS[0]
+        rv_by_client["Total"] = rv_by_client[rv_months].sum(axis=1)
+        rv_by_client = rv_by_client[rv_by_client["Total"] > 0].sort_values("Total", ascending=False).reset_index(drop=True)
 
         # ── Client × Month table ──────────────────────────────────────────────
         st.subheader("Revenue by Client")
-        display_rv = rv_by_client.copy()
-        for m in MONTHS + ["Total"]:
+        display_rv = rv_by_client[["Client"] + rv_months + ["Total"]].copy()
+        for m in rv_months + ["Total"]:
             display_rv[m] = display_rv[m].apply(lambda v: fmt_gbp(v) if v > 0 else "—")
 
         def style_rv_row(row):
@@ -1332,7 +1350,7 @@ with tab_revenue:
         )
 
         # Grand total row
-        grand_rv = {m: rv_by_client[m].sum() for m in MONTHS}
+        grand_rv = {m: rv_by_client[m].sum() for m in rv_months}
         grand_rv["Total"] = rv_by_client["Total"].sum()
         grand_rv_df = pd.DataFrame([{"Client": "Grand Total", **{k: fmt_gbp(v) for k, v in grand_rv.items()}}])
         st.dataframe(
