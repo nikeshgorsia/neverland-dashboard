@@ -1333,39 +1333,38 @@ with tab_revenue:
         )
 
         # ── Project drill-down ────────────────────────────────────────────────
-        st.caption("💡 Click a client row to see their project breakdown by month")
+        st.caption("💡 Click a client row to see their project breakdown")
 
         if sel_rv and sel_rv.get("selection", {}).get("rows"):
             row_idx_rv = sel_rv["selection"]["rows"][0]
             sel_client = rv_by_client.iloc[row_idx_rv]["Client"]
             sp_token   = st.session_state.get("sp_token")
 
-            st.divider()
-            st.subheader(f"Projects — {sel_client}")
+            with st.expander(f"**{sel_client}** — Project Breakdown", expanded=True):
+                sel_drill_month = st.selectbox(
+                    "Month", MONTHS,
+                    index=MONTHS.index(cur_month_name),
+                    key="rv_drill_month",
+                )
 
-            sel_drill_month = st.radio(
-                "Month", MONTHS,
-                index=MONTHS.index(cur_month_name),
-                horizontal=True,
-                key="rv_drill_month",
-            )
-
-            if sp_token:
-                with st.spinner(f"Loading projects..."):
-                    try:
-                        projects = fetch_client_projects(sp_token, sel_client, sel_drill_month)
-                        if not projects:
-                            st.info(f"No project data found for {sel_client} in {sel_drill_month}.")
-                        else:
-                            all_proj_rows = []
-                            for sec_key, proj_list in projects.items():
-                                for p in proj_list:
-                                    all_proj_rows.append({"Project": p["Project"], "Revenue": p["Revenue"]})
-                            proj_df = pd.DataFrame(all_proj_rows).groupby("Project", as_index=False)["Revenue"].sum()
-                            proj_df = proj_df.sort_values("Revenue", ascending=False)
-                            proj_df["Revenue"] = proj_df["Revenue"].apply(lambda v: f"£{v:,.0f}")
-                            st.dataframe(proj_df, use_container_width=True, hide_index=True)
-                    except Exception as e:
-                        st.error(f"Could not load project breakdown: {e}")
-            else:
-                st.info("Authenticate via SharePoint to see project-level breakdown.")
+                if sp_token:
+                    with st.spinner("Loading..."):
+                        try:
+                            projects = fetch_client_projects(sp_token, sel_client, sel_drill_month)
+                            if not projects:
+                                st.info(f"No project data found for {sel_client} in {sel_drill_month}.")
+                            else:
+                                all_proj_rows = []
+                                for proj_list in projects.values():
+                                    for p in proj_list:
+                                        all_proj_rows.append({"Project": p["Project"], "Revenue": p["Revenue"]})
+                                proj_df = pd.DataFrame(all_proj_rows).groupby("Project", as_index=False)["Revenue"].sum()
+                                proj_df = proj_df.sort_values("Revenue", ascending=False)
+                                total_proj = proj_df["Revenue"].sum()
+                                proj_df["Revenue"] = proj_df["Revenue"].apply(lambda v: f"£{v:,.0f}")
+                                st.dataframe(proj_df, use_container_width=True, hide_index=True)
+                                st.markdown(f"**Total: £{total_proj:,.0f}**")
+                        except Exception as e:
+                            st.error(f"Could not load project breakdown: {e}")
+                else:
+                    st.info("Authenticate via SharePoint to see project-level breakdown.")
