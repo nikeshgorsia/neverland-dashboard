@@ -1380,93 +1380,100 @@ with tab_revenue:
                     st.info("Save at least 2 snapshots to compare.")
 
             if snap_b_date:
-                with st.spinner("Loading snapshots..."):
-                    try:
-                        snap_a = load_pipeline_snapshot(snap_a_date)
-                        snap_b = load_pipeline_snapshot(snap_b_date)
+                # Cache loaded snapshots in session state — only re-fetch when dates change
+                cache_key_a = f"snap_data_{snap_a_date}"
+                cache_key_b = f"snap_data_{snap_b_date}"
+                if cache_key_a not in st.session_state:
+                    with st.spinner(f"Loading {_fmt_snap(snap_a_date)}..."):
+                        st.session_state[cache_key_a] = load_pipeline_snapshot(snap_a_date)
+                if cache_key_b not in st.session_state:
+                    with st.spinner(f"Loading {_fmt_snap(snap_b_date)}..."):
+                        st.session_state[cache_key_b] = load_pipeline_snapshot(snap_b_date)
 
-                        def _snap_totals(snap, keys):
-                            frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
-                            if not frames:
-                                return pd.Series(dtype=float)
-                            combined = pd.concat(frames, ignore_index=True)
-                            for m in MONTHS:
-                                if m in combined.columns:
-                                    combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
-                            cols = [m for m in rv_months if m in combined.columns]
-                            return combined.groupby("Client")[cols].sum().sum(axis=1)
+                try:
+                    snap_a = st.session_state[cache_key_a]
+                    snap_b = st.session_state[cache_key_b]
 
-                        totals_a = _snap_totals(snap_a, rv_keys)
-                        totals_b = _snap_totals(snap_b, rv_keys)
+                    def _snap_totals(snap, keys):
+                        frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
+                        if not frames:
+                            return pd.Series(dtype=float)
+                        combined = pd.concat(frames, ignore_index=True)
+                        for m in MONTHS:
+                            if m in combined.columns:
+                                combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
+                        cols = [m for m in rv_months if m in combined.columns]
+                        return combined.groupby("Client")[cols].sum().sum(axis=1)
 
-                        col_a = _fmt_snap(snap_a_date)
-                        col_b = _fmt_snap(snap_b_date)
+                    totals_a = _snap_totals(snap_a, rv_keys)
+                    totals_b = _snap_totals(snap_b, rv_keys)
 
-                        all_clients = sorted(set(totals_a.index) | set(totals_b.index))
-                        cmp_rows = []
-                        for client in all_clients:
-                            val_a = totals_a.get(client, 0)
-                            val_b = totals_b.get(client, 0)
-                            change = val_b - val_a
-                            pct    = (change / val_a * 100) if val_a else None
-                            cmp_rows.append({
-                                "Client":           client,
-                                col_a:              val_a,
-                                col_b:              val_b,
-                                "Change (£)":       change,
-                                "Change (%)":       pct,
-                                "_change_raw":      change,
-                                "_new":             val_a == 0 and val_b > 0,
-                                "_lost":            val_a > 0 and val_b == 0,
-                            })
-                        cmp_df = pd.DataFrame(cmp_rows).sort_values("Change (£)", ascending=False)
+                    col_a = _fmt_snap(snap_a_date)
+                    col_b = _fmt_snap(snap_b_date)
 
-                        # Summary KPIs
-                        total_change = cmp_df["Change (£)"].sum()
-                        new_clients  = cmp_df[cmp_df["_new"]]["Client"].tolist()
-                        lost_clients = cmp_df[cmp_df["_lost"]]["Client"].tolist()
-                        ck1, ck2, ck3 = st.columns(3)
-                        ck1.metric(col_a, fmt_gbp(cmp_df[col_a].sum()))
-                        ck2.metric(col_b, fmt_gbp(cmp_df[col_b].sum()), delta=fmt_gbp(total_change))
-                        ck3.metric("Clients changed", len(cmp_df[cmp_df["Change (£)"] != 0]))
+                    all_clients = sorted(set(totals_a.index) | set(totals_b.index))
+                    cmp_rows = []
+                    for client in all_clients:
+                        val_a = totals_a.get(client, 0)
+                        val_b = totals_b.get(client, 0)
+                        change = val_b - val_a
+                        pct    = (change / val_a * 100) if val_a else None
+                        cmp_rows.append({
+                            "Client":       client,
+                            col_a:          val_a,
+                            col_b:          val_b,
+                            "Change (£)":   change,
+                            "Change (%)":   pct,
+                            "_change_raw":  change,
+                            "_new":         val_a == 0 and val_b > 0,
+                            "_lost":        val_a > 0 and val_b == 0,
+                        })
+                    cmp_df = pd.DataFrame(cmp_rows).sort_values("Change (£)", ascending=False)
 
-                        if new_clients:
-                            st.success(f"New this week: {', '.join(new_clients)}")
-                        if lost_clients:
-                            st.warning(f"No longer active: {', '.join(lost_clients)}")
+                    total_change = cmp_df["Change (£)"].sum()
+                    new_clients  = cmp_df[cmp_df["_new"]]["Client"].tolist()
+                    lost_clients = cmp_df[cmp_df["_lost"]]["Client"].tolist()
+                    ck1, ck2, ck3 = st.columns(3)
+                    ck1.metric(col_a, fmt_gbp(cmp_df[col_a].sum()))
+                    ck2.metric(col_b, fmt_gbp(cmp_df[col_b].sum()), delta=fmt_gbp(total_change))
+                    ck3.metric("Clients changed", len(cmp_df[cmp_df["Change (£)"] != 0]))
 
-                        # Format display
-                        display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)", "Change (%)"]].copy()
-                        display_cmp[col_a] = display_cmp[col_a].apply(lambda v: fmt_gbp(v) if v else "—")
-                        display_cmp[col_b] = display_cmp[col_b].apply(lambda v: fmt_gbp(v) if v else "—")
-                        display_cmp["Change (£)"]   = display_cmp["Change (£)"].apply(lambda v: f"+{fmt_gbp(v)}" if v > 0 else (fmt_gbp(v) if v < 0 else "—"))
-                        display_cmp["Change (%)"]   = display_cmp["Change (%)"].apply(
-                            lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
-                        )
+                    if new_clients:
+                        st.success(f"New this week: {', '.join(new_clients)}")
+                    if lost_clients:
+                        st.warning(f"No longer active: {', '.join(lost_clients)}")
 
-                        def style_cmp(row):
-                            raw = cmp_df.loc[cmp_df["Client"] == row["Client"], "_change_raw"]
-                            change_val = raw.iloc[0] if not raw.empty else 0
-                            styles = []
-                            for c in row.index:
-                                if c in ("Change (£)", "Change (%)"):
-                                    if change_val > 0:
-                                        styles.append("color:#27ae60; font-weight:bold")
-                                    elif change_val < 0:
-                                        styles.append("color:#c0392b; font-weight:bold")
-                                    else:
-                                        styles.append("")
+                    display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)", "Change (%)"]].copy()
+                    display_cmp[col_a] = display_cmp[col_a].apply(lambda v: fmt_gbp(v) if v else "—")
+                    display_cmp[col_b] = display_cmp[col_b].apply(lambda v: fmt_gbp(v) if v else "—")
+                    display_cmp["Change (£)"] = display_cmp["Change (£)"].apply(lambda v: f"+{fmt_gbp(v)}" if v > 0 else (fmt_gbp(v) if v < 0 else "—"))
+                    display_cmp["Change (%)"] = display_cmp["Change (%)"].apply(
+                        lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
+                    )
+
+                    def style_cmp(row):
+                        raw = cmp_df.loc[cmp_df["Client"] == row["Client"], "_change_raw"]
+                        change_val = raw.iloc[0] if not raw.empty else 0
+                        styles = []
+                        for c in row.index:
+                            if c in ("Change (£)", "Change (%)"):
+                                if change_val > 0:
+                                    styles.append("color:#27ae60; font-weight:bold")
+                                elif change_val < 0:
+                                    styles.append("color:#c0392b; font-weight:bold")
                                 else:
                                     styles.append("")
-                            return styles
+                            else:
+                                styles.append("")
+                        return styles
 
-                        st.dataframe(
-                            display_cmp.style.apply(style_cmp, axis=1),
-                            use_container_width=True, hide_index=True,
-                        )
+                    st.dataframe(
+                        display_cmp.style.apply(style_cmp, axis=1),
+                        use_container_width=True, hide_index=True,
+                    )
 
-                    except Exception as e:
-                        st.error(f"Could not load snapshots: {e}")
+                except Exception as e:
+                    st.error(f"Could not load snapshots: {e}")
 
         # ── Project drill-down ────────────────────────────────────────────────
         st.divider()
