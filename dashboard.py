@@ -1327,21 +1327,13 @@ with tab_revenue:
         rv_by_client["Total"] = rv_by_client[rv_months].sum(axis=1)
         rv_by_client = rv_by_client[rv_by_client["Total"] > 0].sort_values("Total", ascending=False).reset_index(drop=True)
 
-        # ── Client × Month table ──────────────────────────────────────────────
+        # ── Client summary (Total only) ───────────────────────────────────────
         st.subheader("Revenue by Client")
-        display_rv = rv_by_client[["Client"] + rv_months + ["Total"]].copy()
-        for m in rv_months + ["Total"]:
-            display_rv[m] = display_rv[m].apply(lambda v: fmt_gbp(v) if v > 0 else "—")
-
-        def style_rv_row(row):
-            return [
-                "font-weight:bold" if c == "Total"
-                else "background-color:#fce4f0; font-weight:bold" if c == cur_month_name
-                else "" for c in row.index
-            ]
+        display_rv = rv_by_client[["Client", "Total"]].copy()
+        display_rv["Total"] = display_rv["Total"].apply(fmt_gbp)
 
         sel_rv = st.dataframe(
-            display_rv.style.apply(style_rv_row, axis=1),
+            display_rv,
             use_container_width=True,
             hide_index=True,
             on_select="rerun",
