@@ -783,6 +783,98 @@ def fetch_raw(token: str):
     return raw, ["Grand Summary"]
 
 
+# ── Weekly Snapshot Storage (GitHub) ─────────────────────────────────────────
+
+GITHUB_REPO = "nikeshgorsia/neverland-dashboard"
+
+def _github_headers():
+    token = _get_secret("GITHUB_TOKEN")
+    if not token:
+        raise ValueError("GITHUB_TOKEN not configured in secrets")
+    return {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+
+def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
+    """Save pipeline snapshot as JSON to GitHub repo. Returns date string used."""
+    import json, base64, datetime
+    if not date_str:
+        date_str = datetime.date.today().isoformat()
+    filename = f"snapshots/snapshot_{date_str}.json"
+
+    serializable = {}
+    for k, v in pipeline_data.items():
+        if isinstance(v, pd.DataFrame):
+            serializable[k] = v.to_dict(orient="records")
+
+    content_str = json.dumps({"date": date_str, "data": serializable}, indent=2)
+    encoded = base64.b64encode(content_str.encode()).decode()
+
+    hdrs = _github_headers()
+    check = requests.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, timeout=10,
+    )
+    sha = check.json().get("sha") if check.status_code == 200 else None
+
+    payload = {"message": f"Weekly snapshot {date_str}", "content": encoded, "branch": "main"}
+    if sha:
+        payload["sha"] = sha
+
+    resp = requests.put(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, json=payload, timeout=15,
+    )
+    if resp.status_code not in (200, 201):
+        raise ValueError(f"Failed to save snapshot: {resp.text[:300]}")
+    return date_str
+
+
+def list_pipeline_snapshots() -> list:
+    """Return list of available snapshot date strings, newest first."""
+    hdrs = _github_headers()
+    resp = requests.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/snapshots",
+        headers=hdrs, timeout=10,
+    )
+    if resp.status_code == 404:
+        return []
+    if resp.status_code != 200:
+        raise ValueError(f"Cannot list snapshots: {resp.text[:200]}")
+    files = resp.json() if isinstance(resp.json(), list) else []
+    dates = []
+    for f in files:
+        name = f.get("name", "")
+        if name.startswith("snapshot_") and name.endswith(".json"):
+            dates.append(name[9:-5])
+    return sorted(dates, reverse=True)
+
+
+def load_pipeline_snapshot(date_str: str) -> dict:
+    """Load a pipeline snapshot by date string. Returns {section: DataFrame}."""
+    import json, base64
+    hdrs = _github_headers()
+    filename = f"snapshots/snapshot_{date_str}.json"
+    resp = requests.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, timeout=10,
+    )
+    if resp.status_code != 200:
+        raise ValueError(f"Snapshot {date_str} not found")
+    raw_content = base64.b64decode(resp.json()["content"]).decode()
+    data = json.loads(raw_content)
+    result = {}
+    for k, v in data.get("data", {}).items():
+        df = pd.DataFrame(v)
+        for m in MONTHS:
+            if m in df.columns:
+                df[m] = pd.to_numeric(df[m], errors="coerce").fillna(0)
+        result[k] = df
+    return result
+
+
 def fetch_budget(token: str) -> dict:
     _load_globals()
     """

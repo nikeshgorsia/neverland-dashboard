@@ -112,7 +112,7 @@ st.markdown(f"""
 import time
 
 try:
-    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept
+    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept, save_pipeline_snapshot, list_pipeline_snapshots, load_pipeline_snapshot
     SHAREPOINT_AVAILABLE = True
 except ImportError:
     SHAREPOINT_AVAILABLE = False
@@ -313,6 +313,14 @@ with st.sidebar:
         import datetime
         ts = datetime.datetime.fromtimestamp(st.session_state["last_refresh"]).strftime("%H:%M:%S")
         st.caption(f"Last updated: {ts}")
+
+    if SHAREPOINT_AVAILABLE and "pipeline" in st.session_state:
+        if st.button("📸 Save Weekly Snapshot", use_container_width=True):
+            try:
+                date_str = save_pipeline_snapshot(st.session_state["pipeline"])
+                st.success(f"✅ Snapshot saved: {date_str}")
+            except Exception as e:
+                st.error(f"Snapshot failed: {e}")
 
     # One-time token setup helper
     if st.session_state.get("_show_token_setup") and "_token_cache_str" in st.session_state:
@@ -1332,7 +1340,116 @@ with tab_revenue:
             use_container_width=True, hide_index=True,
         )
 
+        # ── Week-on-Week Comparison ───────────────────────────────────────────
+        st.divider()
+        st.subheader("Week-on-Week Comparison")
+
+        try:
+            snapshots = list_pipeline_snapshots()
+        except Exception:
+            snapshots = []
+
+        if len(snapshots) < 1:
+            st.info("No snapshots saved yet. Click **Save Weekly Snapshot** in the sidebar every Thursday to build up your history.", icon="📸")
+        else:
+            cmp1, cmp2 = st.columns(2)
+            with cmp1:
+                snap_a_date = st.selectbox("Compare week", snapshots, index=0, key="snap_a")
+            with cmp2:
+                snap_b_options = [s for s in snapshots if s != snap_a_date]
+                if snap_b_options:
+                    snap_b_date = st.selectbox("With week", snap_b_options, index=0, key="snap_b")
+                else:
+                    snap_b_date = None
+                    st.info("Save at least 2 snapshots to compare.")
+
+            if snap_b_date:
+                with st.spinner("Loading snapshots..."):
+                    try:
+                        snap_a = load_pipeline_snapshot(snap_a_date)
+                        snap_b = load_pipeline_snapshot(snap_b_date)
+
+                        def _snap_totals(snap, keys):
+                            frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
+                            if not frames:
+                                return pd.Series(dtype=float)
+                            combined = pd.concat(frames, ignore_index=True)
+                            for m in MONTHS:
+                                if m in combined.columns:
+                                    combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
+                            return combined.groupby("Client")[MONTHS].sum().sum(axis=1)
+
+                        totals_a = _snap_totals(snap_a, rv_keys)
+                        totals_b = _snap_totals(snap_b, rv_keys)
+
+                        all_clients = sorted(set(totals_a.index) | set(totals_b.index))
+                        cmp_rows = []
+                        for client in all_clients:
+                            val_a = totals_a.get(client, 0)
+                            val_b = totals_b.get(client, 0)
+                            change = val_b - val_a
+                            pct    = (change / val_a * 100) if val_a else None
+                            cmp_rows.append({
+                                "Client":           client,
+                                snap_a_date:        val_a,
+                                snap_b_date:        val_b,
+                                "Change (£)":       change,
+                                "Change (%)":       pct,
+                                "_change_raw":      change,
+                                "_new":             val_a == 0 and val_b > 0,
+                                "_lost":            val_a > 0 and val_b == 0,
+                            })
+                        cmp_df = pd.DataFrame(cmp_rows).sort_values("Change (£)", ascending=False)
+
+                        # Summary KPIs
+                        total_change = cmp_df["Change (£)"].sum()
+                        new_clients  = cmp_df[cmp_df["_new"]]["Client"].tolist()
+                        lost_clients = cmp_df[cmp_df["_lost"]]["Client"].tolist()
+                        ck1, ck2, ck3 = st.columns(3)
+                        ck1.metric(f"Revenue {snap_a_date}", fmt_gbp(cmp_df[snap_a_date].sum()))
+                        ck2.metric(f"Revenue {snap_b_date}", fmt_gbp(cmp_df[snap_b_date].sum()), delta=fmt_gbp(total_change))
+                        ck3.metric("Clients changed", len(cmp_df[cmp_df["Change (£)"] != 0]))
+
+                        if new_clients:
+                            st.success(f"New this week: {', '.join(new_clients)}")
+                        if lost_clients:
+                            st.warning(f"No longer active: {', '.join(lost_clients)}")
+
+                        # Format display
+                        display_cmp = cmp_df[["Client", snap_a_date, snap_b_date, "Change (£)", "Change (%)"]].copy()
+                        display_cmp[snap_a_date]    = display_cmp[snap_a_date].apply(lambda v: fmt_gbp(v) if v else "—")
+                        display_cmp[snap_b_date]    = display_cmp[snap_b_date].apply(lambda v: fmt_gbp(v) if v else "—")
+                        display_cmp["Change (£)"]   = display_cmp["Change (£)"].apply(lambda v: f"+{fmt_gbp(v)}" if v > 0 else (fmt_gbp(v) if v < 0 else "—"))
+                        display_cmp["Change (%)"]   = display_cmp["Change (%)"].apply(
+                            lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
+                        )
+
+                        def style_cmp(row):
+                            raw = cmp_df.loc[cmp_df["Client"] == row["Client"], "_change_raw"]
+                            change_val = raw.iloc[0] if not raw.empty else 0
+                            styles = []
+                            for c in row.index:
+                                if c in ("Change (£)", "Change (%)"):
+                                    if change_val > 0:
+                                        styles.append("color:#27ae60; font-weight:bold")
+                                    elif change_val < 0:
+                                        styles.append("color:#c0392b; font-weight:bold")
+                                    else:
+                                        styles.append("")
+                                else:
+                                    styles.append("")
+                            return styles
+
+                        st.dataframe(
+                            display_cmp.style.apply(style_cmp, axis=1),
+                            use_container_width=True, hide_index=True,
+                        )
+
+                    except Exception as e:
+                        st.error(f"Could not load snapshots: {e}")
+
         # ── Project drill-down ────────────────────────────────────────────────
+        st.divider()
         st.caption("💡 Click a client row to see their project breakdown")
 
         if sel_rv and sel_rv.get("selection", {}).get("rows"):
