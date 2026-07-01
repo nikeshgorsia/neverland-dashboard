@@ -802,8 +802,9 @@ def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
     import json, base64, datetime
     if not date_str:
         today = datetime.date.today()
-        monday = today - datetime.timedelta(days=today.weekday())  # w/c Monday
-        date_str = monday.isoformat()
+        monday = today - datetime.timedelta(days=today.weekday())
+        thursday = monday + datetime.timedelta(days=3)  # Thursday of this week
+        date_str = thursday.isoformat()
     filename = f"snapshots/snapshot_{date_str}.json"
 
     serializable = {}

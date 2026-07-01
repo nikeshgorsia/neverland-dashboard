@@ -1353,7 +1353,12 @@ with tab_revenue:
             try:
                 import datetime as _dt2
                 d = _dt2.date.fromisoformat(date_str)
-                return f"w/c {d.strftime('%-d %b %Y')}"
+                day = d.day
+                if 11 <= (day % 100) <= 13:
+                    suffix = "th"
+                else:
+                    suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+                return f"{day}{suffix} {d.strftime('%b %Y')}"
             except Exception:
                 return date_str
 
