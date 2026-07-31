@@ -120,7 +120,7 @@ except ImportError:
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-REFRESH_INTERVAL = 300  # auto-refresh every 5 minutes
+REFRESH_INTERVAL = 1800  # auto-refresh every 30 minutes
 
 # ── Restore token + auto-sync on every cold open ──────────────────────────────
 if SHAREPOINT_AVAILABLE and "sp_token" not in st.session_state:

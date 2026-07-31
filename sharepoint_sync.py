@@ -582,88 +582,85 @@ def fetch_scope(token: str) -> pd.DataFrame:
     )
     sheets = sheets_resp.json().get("value", [])
 
-    result_rows = []
+    # Filter to only dept sheets we care about
+    dept_sheets = [(s, SCOPE_DEPT_MAP[s["name"].upper().strip()])
+                   for s in sheets if s["name"].upper().strip() in SCOPE_DEPT_MAP]
 
-    for sheet in sheets:
-        dept_key = sheet["name"].upper().strip()
-        if dept_key not in SCOPE_DEPT_MAP:
-            continue
-        dept_name   = SCOPE_DEPT_MAP[dept_key]
-        sheet_enc   = requests.utils.quote(sheet["name"], safe="")
+    SECTION_HEADERS = [
+        ("CLIENT (NOT RECOVERED)", "Client (not recovered)"),
+        ("NOT RECOVERED",          "Client (not recovered)"),
+        ("NEW BIZ",                "New Biz"),
+        ("NEW BUSINESS",           "New Biz"),
+    ]
+    SKIP_LABELS = {"", "NONE", "TOTAL", "GRAND TOTAL", "PROJECT", "CLIENT"}
 
+    def _fetch_dept_sheet(sheet, dept_name):
+        sheet_enc = requests.utils.quote(sheet["name"], safe="")
         raw_resp = requests.get(
             f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
             f"/workbook/worksheets/{sheet_enc}/usedRange",
             headers=hdrs, timeout=15,
         )
         if raw_resp.status_code != 200:
-            continue
-
+            return []
         rows = raw_resp.json().get("values", [])
         if not rows:
-            continue
+            return []
 
-        # Find header row with JAN
         header_row = None
         month_cols = {}
         for i, row in enumerate(rows):
             vals = [str(v).strip().upper() if v is not None else "" for v in row]
             if "JAN" in vals:
                 header_row = i
-                for idx, m in enumerate(MONTHS):
-                    m_upper = m.upper()
-                    if m_upper in vals:
-                        month_cols[m] = vals.index(m_upper)
+                for m in MONTHS:
+                    if m.upper() in vals:
+                        month_cols[m] = vals.index(m.upper())
                 break
 
         if not month_cols or header_row is None:
-            continue
+            return []
 
-        # Detect charge categories by section headers
-        # Order matters: check longer/more specific strings first
-        SECTION_HEADERS = [
-            ("CLIENT (NOT RECOVERED)", "Client (not recovered)"),
-            ("NOT RECOVERED",          "Client (not recovered)"),
-            ("NEW BIZ",                "New Biz"),
-            ("NEW BUSINESS",           "New Biz"),
-        ]
-        SKIP_LABELS = {"", "NONE", "TOTAL", "GRAND TOTAL", "PROJECT", "CLIENT"}
-
-        current_category = "Client"  # default
+        dept_rows = []
+        current_category = "Client"
 
         for row in rows[header_row + 1:]:
             cell = str(row[0]).strip() if row[0] is not None else ""
             cell_upper = cell.upper()
 
-            # Always detect section headers first (col 0 keyword match)
             matched_cat = next((v for k, v in SECTION_HEADERS if k in cell_upper), None)
             if matched_cat:
                 current_category = matched_cat
                 continue
 
-            # Skip column header repeat rows (PROJECT or JAN in other cols)
             row_vals_upper = [str(v).upper() if v is not None else "" for v in row]
-            is_col_header = "PROJECT" in row_vals_upper[1:] or ("JAN" in row_vals_upper[1:] and cell_upper not in ("CLIENT", "CLIENT (BILLABLE)"))
-            if is_col_header:
+            if "PROJECT" in row_vals_upper[1:] or ("JAN" in row_vals_upper[1:] and cell_upper not in ("CLIENT", "CLIENT (BILLABLE)")):
                 continue
 
-            # "CLIENT" in col 0 alone resets to Client (only if not a data row)
             if cell_upper in ("CLIENT", "CLIENT (BILLABLE)"):
-                # Only reset if it looks like a section header (col 1 has "PROJECT")
                 if len(row) > 1 and str(row[1]).strip().upper() == "PROJECT":
-                    continue  # column header row, skip
+                    continue
                 current_category = "Client"
                 continue
 
-            if not cell or cell_upper in SKIP_LABELS:
-                continue
-            if "total" in cell_upper:
+            if not cell or cell_upper in SKIP_LABELS or "total" in cell_upper:
                 continue
 
             for m, col in month_cols.items():
                 v = _clean_value(row[col] if col < len(row) else None)
                 if v != 0:
-                    result_rows.append({"Department": dept_name, "Client": cell, "Category": current_category, "Month": m, "Chargeout": v})
+                    dept_rows.append({"Department": dept_name, "Client": cell, "Category": current_category, "Month": m, "Chargeout": v})
+
+        return dept_rows
+
+    # Fetch all dept sheets in parallel
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    result_rows = []
+    with ThreadPoolExecutor(max_workers=7) as ex:
+        futures = {ex.submit(_fetch_dept_sheet, sheet, dept_name): dept_name
+                   for sheet, dept_name in dept_sheets}
+        for future in as_completed(futures):
+            result_rows.extend(future.result() or [])
 
     return pd.DataFrame(result_rows)
 
