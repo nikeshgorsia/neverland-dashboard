@@ -1770,14 +1770,24 @@ with tab_sow:
                 tables = page.find_tables()
                 if not tables or not tables.tables:
                     continue
-                # Find the left table (role names) and right table (hours/fees)
-                # Left table has 3 cols (role, name, rate); right has 4 cols (hrs,fee pairs)
-                left = next((t for t in tables.tables if t.col_count == 3), None)
-                right = next((t for t in tables.tables if t.col_count == 4), None)
+                # Find the left table (role names, 3 cols) and right table (hours/fees, >=4 cols)
+                left  = next((t for t in tables.tables if t.col_count == 3), None)
+                right = next((t for t in tables.tables if t.col_count >= 4), None)
                 if left is None:
                     continue
                 left_rows  = left.extract()
                 right_rows = right.extract() if right else []
+
+                # Detect hours/fee column indices from right table header row
+                hrs_cols, fee_cols = [0], [1]  # fallback
+                for hrow in right_rows[:6]:
+                    cells_norm = [str(c or "").lower().strip() for c in hrow]
+                    h_idx = [i for i, c in enumerate(cells_norm) if c == "hours"]
+                    f_idx = [i for i, c in enumerate(cells_norm) if c == "fee"]
+                    if h_idx and f_idx:
+                        hrs_cols, fee_cols = h_idx, f_idx
+                        break
+
                 current_dept = ""
                 for i, row in enumerate(left_rows):
                     cell0 = str(row[0] or "").strip()
@@ -1793,14 +1803,13 @@ with tab_sow:
                     if not cell1:
                         continue
                     role = cell0
-                    rate_str = str(row[2] or "")
-                    rate = _num(rate_str)
-                    # Get hours/fees from right table at same row
+                    rate = _num(str(row[2] or ""))
+                    # Get hours/fees from right table at row i+1 (consistent offset)
                     total_hrs = total_fee = 0.0
                     if i + 1 < len(right_rows):
-                        nums = [_num(c) for c in (right_rows[i + 1] or [])]
-                        total_hrs = sum(nums[j] for j in range(0, len(nums), 2))
-                        total_fee = sum(nums[j] for j in range(1, len(nums), 2))
+                        rrow = right_rows[i + 1] or []
+                        total_hrs = sum(_num(str(rrow[ci])) for ci in hrs_cols if ci < len(rrow))
+                        total_fee = sum(_num(str(rrow[ci])) for ci in fee_cols if ci < len(rrow))
                     if total_hrs > 0 or total_fee > 0:
                         rows_out.append({
                             "Project":     project_name,
