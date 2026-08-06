@@ -2069,11 +2069,18 @@ with tab_sow:
                     col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
                 col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
+                # Colour columns 2=SoW Total (hrs), 3=SoW Total (£), 4=Scheduled
                 st.markdown("""
                 <style>
-                [data-testid="stDataEditor"] [col-id="SoW Total"] { background: rgba(99,102,241,0.12) !important; }
-                [data-testid="stDataEditor"] [col-id="SoW Total (£)"] { background: rgba(236,72,153,0.12) !important; }
-                [data-testid="stDataEditor"] [col-id="Scheduled ∑"] { background: rgba(16,185,129,0.12) !important; }
+                [data-testid="stDataEditor"] .ag-cell[aria-colindex="2"],
+                [data-testid="stDataEditor"] .ag-header-cell[aria-colindex="2"]
+                    { background-color: rgba(99,102,241,0.18) !important; }
+                [data-testid="stDataEditor"] .ag-cell[aria-colindex="3"],
+                [data-testid="stDataEditor"] .ag-header-cell[aria-colindex="3"]
+                    { background-color: rgba(236,72,153,0.18) !important; }
+                [data-testid="stDataEditor"] .ag-cell[aria-colindex="4"],
+                [data-testid="stDataEditor"] .ag-header-cell[aria-colindex="4"]
+                    { background-color: rgba(16,185,129,0.18) !important; }
                 </style>""", unsafe_allow_html=True)
                 edited_df = st.data_editor(
                     sched_df, column_config=col_config,
