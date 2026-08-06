@@ -678,5 +678,105 @@
     "Total Hours": 48.0,
     "Total Fee": 3840.0,
     "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Management",
+    "Role": "Founder, Creative Comms & CCO",
+    "Hourly Rate": 216.0,
+    "Total Hours": 7.0,
+    "Total Fee": 1512.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Management",
+    "Role": "Chief Executive Officer",
+    "Hourly Rate": 216.0,
+    "Total Hours": 4.0,
+    "Total Fee": 864.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Head of Client Service",
+    "Hourly Rate": 160.0,
+    "Total Hours": 12.0,
+    "Total Fee": 1920.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Director",
+    "Hourly Rate": 68.0,
+    "Total Hours": 17.0,
+    "Total Fee": 1156.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Manager",
+    "Hourly Rate": 52.0,
+    "Total Hours": 34.0,
+    "Total Fee": 1768.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Chief Strategy Officer",
+    "Hourly Rate": 216.0,
+    "Total Hours": 8.0,
+    "Total Fee": 1728.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategy Director",
+    "Hourly Rate": 160.0,
+    "Total Hours": 34.0,
+    "Total Fee": 5440.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 160.0,
+    "Total Hours": 30.0,
+    "Total Fee": 4800.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 160.0,
+    "Total Hours": 24.0,
+    "Total Fee": 3840.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Corporate Partners Fee APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Designer",
+    "Hourly Rate": 88.0,
+    "Total Hours": 104.0,
+    "Total Fee": 9152.0,
+    "_source": "Corporate Partners Fee APPROVED.pdf"
   }
 ]
