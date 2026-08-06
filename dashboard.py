@@ -1816,6 +1816,25 @@ with tab_sow:
                         pass
                     st.rerun()
 
+        @st.dialog("Role Breakdown by Client", width="large")
+        def _show_role_breakdown(role_name, dept_name):
+            st.subheader(f"{role_name} — {dept_name}")
+            role_rows = sow_df[(sow_df["Role"] == role_name) & (sow_df["Department"] == dept_name)].copy()
+            for col in ("Total Hours", "Total Fee"):
+                role_rows[col] = pd.to_numeric(role_rows[col], errors="coerce").fillna(0)
+            breakdown = (
+                role_rows.groupby(["Project", "Client"] if "Client" in role_rows.columns else ["Project"])
+                .agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
+                .reset_index()
+                .sort_values("Fee", ascending=False)
+            )
+            total_h = breakdown["Hours"].sum()
+            total_f = breakdown["Fee"].sum()
+            breakdown["Hours"] = breakdown["Hours"].apply(lambda v: f"{v:,.0f}")
+            breakdown["Fee"]   = breakdown["Fee"].apply(lambda v: f"£{v:,.0f}")
+            st.dataframe(breakdown, use_container_width=True, hide_index=True)
+            st.markdown(f"**Total — {total_h:,.0f} hrs · £{total_f:,.0f}**")
+
         # ── department sections ───────────────────────────────────────────────
         depts = sorted(d for d in sow_df["Department"].unique() if d)
         for dept in depts:
@@ -1831,15 +1850,24 @@ with tab_sow:
                 unsafe_allow_html=True,
             )
 
-            role_df = (
+            role_df_raw = (
                 dept_df.groupby("Role")
                 .agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
                 .reset_index()
                 .sort_values("Fee", ascending=False)
             )
-            role_df["Hours"] = role_df["Hours"].apply(lambda v: f"{v:,.0f}")
-            role_df["Fee"]   = role_df["Fee"].apply(lambda v: f"£{v:,.0f}")
-            st.dataframe(role_df, use_container_width=True, hide_index=True)
+            display_role = role_df_raw.copy()
+            display_role["Hours"] = display_role["Hours"].apply(lambda v: f"{v:,.0f}")
+            display_role["Fee"]   = display_role["Fee"].apply(lambda v: f"£{v:,.0f}")
+            st.caption("Click a row to see the client breakdown.")
+            sel = st.dataframe(
+                display_role, use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row",
+                key=f"sow_role_{dept}",
+            )
+            if sel and sel.get("selection", {}).get("rows"):
+                selected_role = role_df_raw.iloc[sel["selection"]["rows"][0]]["Role"]
+                _show_role_breakdown(selected_role, dept)
 
         # ── grand total ───────────────────────────────────────────────────────
         st.markdown("---")
