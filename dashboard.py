@@ -1621,7 +1621,29 @@ with tab_sow:
 
         rows_out = []
         current_dept = ""
-        DEPT_COL, ROLE_COL, RATE_COL, HRS_COL, FEE_COL = 0, 2, 4, 30, 32
+        DEPT_COL, ROLE_COL, RATE_COL = 0, 2, 4
+
+        # Auto-detect total Hours and Fee columns from the header row.
+        # The header row has "Hourly Rate" in col 4. After that, find the
+        # LAST "Hours" column (before any FTE column) and the Fee column after it.
+        HRS_COL, FEE_COL = 30, 32  # sensible defaults
+        for _, hrow in ws_raw.iterrows():
+            vals = [str(v).strip().lower() if v is not None else "" for v in hrow]
+            if "hourly rate" in vals or (len(vals) > 4 and vals[4] in ("hourly rate",)):
+                # Find last 'hours' column
+                last_hrs = None
+                for ci, v in enumerate(vals):
+                    if v == "hours":
+                        last_hrs = ci
+                if last_hrs is not None:
+                    HRS_COL = last_hrs
+                    # Fee column is the next non-empty, non-FTE column after last_hrs
+                    for ci in range(last_hrs + 1, len(vals)):
+                        v = vals[ci]
+                        if v and "fte" not in v and "hours" not in v:
+                            FEE_COL = ci
+                            break
+                break
 
         for _, row in ws_raw.iterrows():
             dept_val = row.iloc[DEPT_COL] if DEPT_COL < len(row) else None
