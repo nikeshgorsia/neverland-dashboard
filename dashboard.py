@@ -1360,9 +1360,17 @@ with tab_revenue:
             total_change = cmp_df["Change (£)"].sum()
             new_clients  = cmp_df[cmp_df["_new"]]["Client"].tolist()
             lost_clients = cmp_df[cmp_df["_lost"]]["Client"].tolist()
+            def _fmt_delta(v):
+                sign = "+" if v >= 0 else "-"
+                av = abs(v)
+                if av >= 1_000_000:
+                    return f"{sign}£{av/1_000_000:.2f}M"
+                if av >= 1_000:
+                    return f"{sign}£{av/1_000:.0f}k"
+                return f"{sign}£{av:,.0f}"
             ck1, ck2, ck3 = st.columns(3)
-            ck1.metric(col_a, fmt_gbp(cmp_df[col_a].sum()))
-            ck2.metric(col_b, fmt_gbp(cmp_df[col_b].sum()), delta=fmt_gbp(total_change))
+            ck1.metric(col_a, fmt_gbp(cmp_df[col_a].sum()), delta=_fmt_delta(total_change))
+            ck2.metric(col_b, fmt_gbp(cmp_df[col_b].sum()))
             ck3.metric("Clients changed", len(cmp_df[cmp_df["Change (£)"] != 0]))
             if new_clients:
                 st.success(f"New: {', '.join(new_clients)}")
@@ -1371,7 +1379,7 @@ with tab_revenue:
             display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)", "Change (%)"]].copy()
             display_cmp[col_a]        = display_cmp[col_a].apply(lambda v: fmt_gbp(v) if v else "—")
             display_cmp[col_b]        = display_cmp[col_b].apply(lambda v: fmt_gbp(v) if v else "—")
-            display_cmp["Change (£)"] = display_cmp["Change (£)"].apply(lambda v: f"+{fmt_gbp(v)}" if v > 0 else (fmt_gbp(v) if v < 0 else "—"))
+            display_cmp["Change (£)"] = display_cmp["Change (£)"].apply(lambda v: _fmt_delta(v) if v != 0 else "—")
             display_cmp["Change (%)"] = display_cmp["Change (%)"].apply(
                 lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
             )
