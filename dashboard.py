@@ -1907,15 +1907,17 @@ with tab_sow:
                 sched_rows = []
                 saved_proj = schedule.get(sel_proj, {})
                 for role, total_hrs in role_totals.items():
-                    per_month = round(total_hrs / n_active, 1)
                     row = {"Role": role}
-                    for m in _MS:
-                        if role in saved_proj and m in saved_proj[role]:
-                            row[m] = saved_proj[role][m]
-                        elif m in active_months:
+                    if role in saved_proj and any(m in saved_proj[role] for m in _MS):
+                        for m in _MS:
+                            row[m] = saved_proj[role].get(m, 0.0)
+                    else:
+                        per_month = round(total_hrs / n_active, 1)
+                        for m in _MS:
                             row[m] = per_month
-                        else:
-                            row[m] = 0.0
+                        # correct rounding drift on first month
+                        drift = round(total_hrs - sum(row[m] for m in _MS), 1)
+                        row[_MS[0]] = round(row[_MS[0]] + drift, 1)
                     row["SoW Total"] = round(total_hrs, 1)
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     sched_rows.append(row)
