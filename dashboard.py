@@ -1430,7 +1430,7 @@ with tab_revenue:
         snap_label_b = "With date"    if cmp_mode != "Week" else "With week"
 
         if len(snapshots) < 1:
-            st.info("No snapshots saved yet. Click **Save Weekly Snapshot** in the sidebar every Thursday to build up your history.", icon="📸")
+            st.info("No snapshots yet. Snapshots are saved automatically every Thursday at 6pm — check back after the first run.", icon="📸")
         else:
             snap_labels = {s: _fmt_snap(s) for s in snapshots}
             cmp1, cmp2 = st.columns(2)

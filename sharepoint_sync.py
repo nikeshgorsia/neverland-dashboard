@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
-from msal import PublicClientApplication, SerializableTokenCache
+from msal import PublicClientApplication, ConfidentialClientApplication, SerializableTokenCache
 
 # Reuse a single HTTP connection to graph.microsoft.com across all API calls
 _session = requests.Session()
@@ -115,6 +115,20 @@ def _save_cache(cache):
         st.session_state["_token_cache_str"] = serialized  # expose for secrets setup
     except Exception:
         pass
+
+
+def get_app_token() -> str:
+    """Acquire an app-only token via client credentials — for scheduled jobs."""
+    _load_globals()
+    app = ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=f"https://login.microsoftonline.com/{TENANT_ID}",
+        client_credential=CLIENT_SECRET,
+    )
+    result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+    if "access_token" not in result:
+        raise ValueError(f"App token failed: {result.get('error_description', result)}")
+    return result["access_token"]
 
 
 def get_device_flow():
