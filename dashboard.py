@@ -1348,10 +1348,9 @@ with tab_revenue:
                 val_a = totals_a.get(client, 0)
                 val_b = totals_b.get(client, 0)
                 change = val_a - val_b
-                pct    = (change / val_b * 100) if val_b else None
                 cmp_rows.append({
                     "Client": client, col_a: val_a, col_b: val_b,
-                    "Change (£)": change, "Change (%)": pct,
+                    "Change (£)": change,
                     "_change_raw": change,
                     "_new":  val_b == 0 and val_a > 0,
                     "_lost": val_a == 0 and val_b > 0,
@@ -1376,17 +1375,14 @@ with tab_revenue:
                 st.success(f"New: {', '.join(new_clients)}")
             if lost_clients:
                 st.warning(f"No longer active: {', '.join(lost_clients)}")
-            display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)", "Change (%)"]].copy()
+            display_cmp = cmp_df[["Client", col_a, col_b, "Change (£)"]].copy()
             display_cmp[col_a]        = display_cmp[col_a].apply(lambda v: fmt_gbp(v) if v else "—")
             display_cmp[col_b]        = display_cmp[col_b].apply(lambda v: fmt_gbp(v) if v else "—")
             display_cmp["Change (£)"] = display_cmp["Change (£)"].apply(lambda v: _fmt_delta(v) if v != 0 else "—")
-            display_cmp["Change (%)"] = display_cmp["Change (%)"].apply(
-                lambda v: f"+{v:.1f}%" if v and v > 0 else (f"{v:.1f}%" if v else ("NEW" if v is None else "—"))
-            )
             def _style_cmp(row):
                 raw = cmp_df.loc[cmp_df["Client"] == row["Client"], "_change_raw"]
                 cv  = raw.iloc[0] if not raw.empty else 0
-                return ["color:#27ae60;font-weight:bold" if cv > 0 else ("color:#c0392b;font-weight:bold" if cv < 0 else "") if c in ("Change (£)", "Change (%)") else "" for c in row.index]
+                return ["color:#27ae60;font-weight:bold" if cv > 0 else ("color:#c0392b;font-weight:bold" if cv < 0 else "") if c == "Change (£)" else "" for c in row.index]
             sel = st.dataframe(
                 display_cmp.style.apply(_style_cmp, axis=1),
                 use_container_width=True, hide_index=True,
