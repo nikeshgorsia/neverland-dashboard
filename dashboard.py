@@ -1678,6 +1678,9 @@ with tab_sow:
             dept = dept_str if dept_str else current_dept
             _DEPT_RENAME = {"Account": "Client Service", "Total Account": "Client Service"}
             dept = _DEPT_RENAME.get(dept, dept)
+            # Roles with "Strategy" in their title belong in Strategy, not Client Service
+            if dept == "Client Service" and "strategy" in role_str.lower():
+                dept = "Strategy"
             rows_out.append({
                 "Project":      project_name,
                 "Client":       client_name,
