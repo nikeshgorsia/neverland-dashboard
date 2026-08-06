@@ -1833,13 +1833,13 @@ with tab_sow:
                     role_rows[col] = pd.to_numeric(role_rows[col], errors="coerce").fillna(0)
                 breakdown = (
                     role_rows.groupby(["Project", "Client"] if "Client" in role_rows.columns else ["Project"])
-                    .agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
+                    .agg(**{"Hours Scoped": ("Total Hours", "sum"), "Fee": ("Total Fee", "sum")})
                     .reset_index()
                     .sort_values("Fee", ascending=False)
                 )
-                total_h = breakdown["Hours"].sum()
+                total_h = breakdown["Hours Scoped"].sum()
                 total_f = breakdown["Fee"].sum()
-                breakdown["Hours"] = breakdown["Hours"].apply(lambda v: f"{v:,.0f}")
+                breakdown["Hours Scoped"] = breakdown["Hours Scoped"].apply(lambda v: f"{v:,.0f}")
                 breakdown["Fee"]   = breakdown["Fee"].apply(lambda v: f"£{v:,.0f}")
                 st.dataframe(breakdown, use_container_width=True, hide_index=True)
                 st.markdown(f"**Total — {total_h:,.0f} hrs · £{total_f:,.0f}**")
@@ -1861,12 +1861,12 @@ with tab_sow:
 
                 role_df_raw = (
                     dept_df.groupby("Role")
-                    .agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
+                    .agg(**{"Hours Scoped": ("Total Hours", "sum"), "Fee": ("Total Fee", "sum")})
                     .reset_index()
                     .sort_values("Fee", ascending=False)
                 )
                 display_role = role_df_raw.copy()
-                display_role["Hours"] = display_role["Hours"].apply(lambda v: f"{v:,.0f}")
+                display_role["Hours Scoped"] = display_role["Hours Scoped"].apply(lambda v: f"{v:,.0f}")
                 display_role["Fee"]   = display_role["Fee"].apply(lambda v: f"£{v:,.0f}")
                 st.caption("Click a row to see the client breakdown.")
                 sel = st.dataframe(
