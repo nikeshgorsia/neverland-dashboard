@@ -558,5 +558,125 @@
     "Total Hours": 22.0,
     "Total Fee": 3774.0,
     "_source": "Client approved 2026 Q2 Fee with production brocken down by deliverable with Jon added in.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Founder, Creative Comms",
+    "Hourly Rate": 375.0,
+    "Total Hours": 16.0,
+    "Total Fee": 6000.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Head of CS",
+    "Hourly Rate": 230.0,
+    "Total Hours": 2.0,
+    "Total Fee": 460.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Business Director",
+    "Hourly Rate": 165.0,
+    "Total Hours": 100.0,
+    "Total Fee": 16500.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Manager",
+    "Hourly Rate": 80.0,
+    "Total Hours": 261.0,
+    "Total Fee": 20880.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategy Director",
+    "Hourly Rate": 220.0,
+    "Total Hours": 14.0,
+    "Total Fee": 3080.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategist",
+    "Hourly Rate": 100.0,
+    "Total Hours": 23.0,
+    "Total Fee": 2300.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 230.0,
+    "Total Hours": 134.0,
+    "Total Fee": 30820.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative (AD)",
+    "Hourly Rate": 120.0,
+    "Total Hours": 424.0,
+    "Total Fee": 50880.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Management",
+    "Role": "CCPO",
+    "Hourly Rate": 300.0,
+    "Total Hours": 1.0,
+    "Total Fee": 300.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Head of Production",
+    "Hourly Rate": 225.0,
+    "Total Hours": 13.5,
+    "Total Fee": 3037.5,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Producer",
+    "Hourly Rate": 120.0,
+    "Total Hours": 341.0,
+    "Total Fee": 40920.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
+  },
+  {
+    "Project": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Production Assistant",
+    "Hourly Rate": 80.0,
+    "Total Hours": 48.0,
+    "Total Fee": 3840.0,
+    "_source": "Copy of Copy of BMS Production SOW_AC 179k 16.1.26.xlsx"
   }
 ]
