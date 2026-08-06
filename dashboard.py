@@ -1935,27 +1935,18 @@ with tab_sow:
                     key=f"sched_editor_{sel_proj}",
                 )
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
-                delta_rows = edited_df[abs(edited_df["Scheduled"] - edited_df["SoW Total"]) > 0.5]
-                if not delta_rows.empty:
-                    st.warning(
-                        "Some roles differ from their SoW total: " +
-                        ", ".join(f"{r['Role']} ({r['Scheduled']:,.0f} vs {r['SoW Total']:,.0f})" for _, r in delta_rows.iterrows()),
-                        icon="⚠️",
-                    )
-                if st.button("Save Schedule", key="sched_save"):
-                    proj_schedule = {"_active_months": active_months}
-                    for _, row in edited_df.iterrows():
-                        proj_schedule[row["Role"]] = {m: float(row[m]) for m in _MS}
-                    schedule[sel_proj] = proj_schedule
+
+                # Auto-save whenever values differ from what's persisted
+                new_proj_schedule = {"_active_months": active_months}
+                for _, row in edited_df.iterrows():
+                    new_proj_schedule[row["Role"]] = {m: float(row[m]) for m in _MS}
+                if schedule.get(sel_proj) != new_proj_schedule:
+                    schedule[sel_proj] = new_proj_schedule
                     st.session_state["sow_schedule"] = schedule
                     try:
                         save_sow_schedule(schedule)
-                        # clear editor delta state so next render uses saved values cleanly
-                        st.session_state.pop(f"sched_editor_{sel_proj}", None)
-                        st.success("Schedule saved.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Could not save: {e}")
+                    except Exception:
+                        pass
                 st.markdown("#### Monthly Hours — All Projects")
                 chart_rows = []
                 for proj in projects:
