@@ -168,44 +168,21 @@ if SHAREPOINT_AVAILABLE and "sp_token" not in st.session_state:
 # Phase 2 (deferred): load remaining sources in the background after phase 1.
 # After the first load, st.cache_data keeps results for 30 min across all
 # sessions/users — subsequent loads return from cache in milliseconds.
-_LOADING_CSS = f"""
-<style>
-@keyframes clouds-drift {{
-    0%   {{ transform: scale(1.1) translateX(0px); }}
-    100% {{ transform: scale(1.1) translateX(-120px); }}
-}}
-@keyframes sweep {{
-    0%   {{ clip-path: inset(0 100% 0 0); }}
-    60%  {{ clip-path: inset(0 0% 0 0); }}
-    85%  {{ clip-path: inset(0 0% 0 0); opacity: 1; }}
-    100% {{ clip-path: inset(0 0% 0 0); opacity: 0; }}
-}}
-.nv-bg {{
-    position: fixed; inset: -10%;
-    background: url('data:image/jpeg;base64,{_bg_b64}') center/cover no-repeat;
-    animation: clouds-drift 20s linear infinite; z-index: 0;
-}}
-.nv-loading-content {{
-    position: relative; z-index: 1;
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-}}
-.nv-loading-text {{
-    font-family: 'FuturaPT-Bold', sans-serif; font-size: 1.4rem;
-    color: #FFFFFF; letter-spacing: 0.18em; text-transform: uppercase;
-    animation: sweep 2s ease-in-out infinite; white-space: nowrap;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.25);
-}}
-</style>
-<div style="position:fixed;inset:0;z-index:9999;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;">
-  <div class="nv-bg"></div>
-  <div class="nv-loading-content">
-    <img src="data:image/png;base64,{_logo_b64}"
-        style="width:300px;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.2))">
-    <p class="nv-loading-text" style="margin-top:8px;">{{msg}}</p>
-  </div>
-</div>
-"""
+_LOADING_HTML = (
+    "<style>"
+    "@keyframes clouds-drift{0%{transform:scale(1.1) translateX(0px)}100%{transform:scale(1.1) translateX(-120px)}}"
+    "@keyframes sweep{0%{clip-path:inset(0 100% 0 0)}60%{clip-path:inset(0 0% 0 0)}85%{clip-path:inset(0 0% 0 0);opacity:1}100%{clip-path:inset(0 0% 0 0);opacity:0}}"
+    f".nv-bg{{position:fixed;inset:-10%;background:url('data:image/jpeg;base64,{_bg_b64}') center/cover no-repeat;animation:clouds-drift 20s linear infinite;z-index:0}}"
+    ".nv-lc{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px}"
+    ".nv-lt{font-family:'FuturaPT-Bold',sans-serif;font-size:1.4rem;color:#FFF;letter-spacing:.18em;text-transform:uppercase;animation:sweep 2s ease-in-out infinite;white-space:nowrap;text-shadow:0 2px 12px rgba(0,0,0,.25)}"
+    "</style>"
+    "<div style='position:fixed;inset:0;z-index:9999;overflow:hidden;display:flex;align-items:center;justify-content:center'>"
+    "<div class='nv-bg'></div>"
+    "<div class='nv-lc'>"
+    f"<img src='data:image/png;base64,{_logo_b64}' style='width:300px;filter:drop-shadow(0 4px 24px rgba(0,0,0,.2))'>"
+    "<p class='nv-lt' style='margin-top:8px'>Loading your dashboard...</p>"
+    "</div></div>"
+)
 
 if SHAREPOINT_AVAILABLE and "sp_token" in st.session_state:
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -225,7 +202,7 @@ if SHAREPOINT_AVAILABLE and "sp_token" in st.session_state:
 
         if pipeline_stale:
             # Phase 1: pipeline only — show loading screen, then render dashboard fast
-            st.markdown(_LOADING_CSS.format(msg="Loading your dashboard..."), unsafe_allow_html=True)
+            st.markdown(_LOADING_HTML, unsafe_allow_html=True)
             with st.spinner(""):
                 try:
                     st.session_state["pipeline"] = _cf_pipeline(token)
