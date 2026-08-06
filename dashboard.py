@@ -2061,14 +2061,33 @@ with tab_sow:
                 sched_df = pd.DataFrame(sched_rows)
                 col_config = {
                     "Role":         st.column_config.TextColumn("Role", disabled=True),
-                    "SoW Total":    st.column_config.NumberColumn("🔵 Hrs Scoped", disabled=True, format="%.1f"),
-                    "SoW Total (£)": st.column_config.NumberColumn("🟣 Fee Scoped", disabled=True, format="£%.0f"),
-                    "Scheduled":    st.column_config.NumberColumn("🟢 Scheduled", disabled=True, format="%.1f"),
+                    "SoW Total":    st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
+                    "SoW Total (£)": st.column_config.NumberColumn("SoW Total (£)", disabled=True, format="£%.0f"),
+                    "Scheduled":    st.column_config.NumberColumn("Scheduled ∑", disabled=True, format="%.1f"),
                 }
                 for m in _MS:
                     col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
                 col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
+                # col-id in AG Grid = DataFrame column name (not the display label)
+                st.markdown("""
+                <style>
+                .ag-cell[col-id="SoW Total"],
+                .ag-header-cell[col-id="SoW Total"] {
+                    background-color: rgba(99,102,241,0.18) !important;
+                    background: rgba(99,102,241,0.18) !important;
+                }
+                .ag-cell[col-id="SoW Total (£)"],
+                .ag-header-cell[col-id="SoW Total (£)"] {
+                    background-color: rgba(236,72,153,0.18) !important;
+                    background: rgba(236,72,153,0.18) !important;
+                }
+                .ag-cell[col-id="Scheduled"],
+                .ag-header-cell[col-id="Scheduled"] {
+                    background-color: rgba(16,185,129,0.18) !important;
+                    background: rgba(16,185,129,0.18) !important;
+                }
+                </style>""", unsafe_allow_html=True)
                 edited_df = st.data_editor(
                     sched_df, column_config=col_config,
                     use_container_width=True, hide_index=True,
