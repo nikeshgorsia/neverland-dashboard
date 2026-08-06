@@ -1739,6 +1739,52 @@ with tab_sow:
         out = out[out["Total Hours"] > 0].dropna(subset=["Role"])
         return out[["Project","Client","Department","Role","Hourly Rate","Total Hours","Total Fee"]]
 
+    def _parse_pdf_sow(file_bytes: bytes, filename: str):
+        """Extract a role/hours/fee table from a PDF SoW using PyMuPDF."""
+        try:
+            import fitz, io, re
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            rows_out = []
+            project_name = filename.rsplit(".", 1)[0]
+            current_dept = ""
+            for page in doc:
+                blocks = page.get_text("blocks")
+                lines = []
+                for b in sorted(blocks, key=lambda b: (round(b[1] / 10), b[0])):
+                    text = b[4].strip()
+                    if text:
+                        lines.extend(text.split("\n"))
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Try to detect a data row: Role | Rate | Hours | Fee
+                    nums = re.findall(r"[\d,]+\.?\d*", line)
+                    if len(nums) >= 2:
+                        # last two numbers treated as hours and fee
+                        try:
+                            hrs = float(nums[-2].replace(",", ""))
+                            fee = float(nums[-1].replace(",", ""))
+                            role = re.sub(r"[\d,£\.\s]+$", "", line).strip()
+                            if role and hrs > 0:
+                                rows_out.append({
+                                    "Project": project_name, "Client": "",
+                                    "Department": current_dept, "Role": role,
+                                    "Hourly Rate": 0, "Total Hours": hrs, "Total Fee": fee,
+                                })
+                        except ValueError:
+                            pass
+                    else:
+                        # Likely a section header / department name
+                        if len(line) < 60 and not any(c.isdigit() for c in line):
+                            current_dept = line
+            doc.close()
+            if rows_out:
+                return pd.DataFrame(rows_out)
+        except Exception:
+            pass
+        return None
+
     def _parse_uploaded_sow(uploaded):
         name = uploaded.name
         data = uploaded.read()
@@ -1749,6 +1795,8 @@ with tab_sow:
                 df = _parse_generic_sow(data, name)
         elif ext == "csv":
             df = _parse_generic_sow(data, name)
+        elif ext == "pdf":
+            df = _parse_pdf_sow(data, name)
         else:
             df = None
         if df is None or df.empty:
@@ -1768,7 +1816,7 @@ with tab_sow:
     if sow_view == "Summary":
         uploaded_files = st.file_uploader(
             "Upload Scope of Work files",
-            type=["xlsx", "xls", "csv"],
+            type=["xlsx", "xls", "csv", "pdf"],
             accept_multiple_files=True,
             help="Use your standard Neverland Staffing Fee Template Excel file.",
         )
