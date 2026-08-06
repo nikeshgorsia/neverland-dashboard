@@ -22,7 +22,7 @@
   {
     "Project": "AGE UK_Legacy & BS LEAN",
     "Client": "",
-    "Department": "Client Service",
+    "Department": "Management",
     "Role": "CEO",
     "Hourly Rate": 300.0,
     "Total Hours": 18.0,
@@ -182,7 +182,7 @@
   {
     "Project": "SHARPS_Project fees_v4",
     "Client": "",
-    "Department": "Client Service",
+    "Department": "Management",
     "Role": "CEO",
     "Hourly Rate": 320.0,
     "Total Hours": 4.0,
@@ -302,7 +302,7 @@
   {
     "Project": "SHARPS_Project fees_v4",
     "Client": "",
-    "Department": "Production",
+    "Department": "Management",
     "Role": "CCPO",
     "Hourly Rate": 240.0,
     "Total Hours": 63.0,
@@ -372,7 +372,7 @@
   {
     "Project": "Client approved 2026 Q2 Fee with production brocken down by deliverable with Jon added in",
     "Client": "",
-    "Department": "Client Service",
+    "Department": "Management",
     "Role": "CEO",
     "Hourly Rate": 312.0,
     "Total Hours": 12.0,
@@ -382,7 +382,7 @@
   {
     "Project": "Client approved 2026 Q2 Fee with production brocken down by deliverable with Jon added in",
     "Client": "",
-    "Department": "Client Service",
+    "Department": "Management",
     "Role": "Chief Client Officer",
     "Hourly Rate": 279.0,
     "Total Hours": 126.0,
@@ -512,7 +512,7 @@
   {
     "Project": "Client approved 2026 Q2 Fee with production brocken down by deliverable with Jon added in",
     "Client": "",
-    "Department": "Production",
+    "Department": "Management",
     "Role": "CCPO",
     "Hourly Rate": 279.0,
     "Total Hours": 49.0,
