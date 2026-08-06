@@ -878,5 +878,205 @@
     "Total Hours": 16.0,
     "Total Fee": 960.0,
     "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Founder, Brand Strategy",
+    "Hourly Rate": 345.0,
+    "Total Hours": 56.0,
+    "Total Fee": 19320.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Founder, Creative Comms",
+    "Hourly Rate": 345.0,
+    "Total Hours": 114.0,
+    "Total Fee": 39330.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Management",
+    "Role": "CEO",
+    "Hourly Rate": 345.0,
+    "Total Hours": 26.0,
+    "Total Fee": 8970.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Chief Client Officer",
+    "Hourly Rate": 285.0,
+    "Total Hours": 149.0,
+    "Total Fee": 42465.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Business Director",
+    "Hourly Rate": 165.0,
+    "Total Hours": 487.0,
+    "Total Fee": 80355.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Director",
+    "Hourly Rate": 120.0,
+    "Total Hours": 436.0,
+    "Total Fee": 52320.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Senior Account Manager",
+    "Hourly Rate": 100.0,
+    "Total Hours": 263.0,
+    "Total Fee": 26300.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Head of Strategy",
+    "Hourly Rate": 230.0,
+    "Total Hours": 193.0,
+    "Total Fee": 44390.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategy Director",
+    "Hourly Rate": 205.0,
+    "Total Hours": 34.0,
+    "Total Fee": 6970.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategist",
+    "Hourly Rate": 110.0,
+    "Total Hours": 98.0,
+    "Total Fee": 10780.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 230.0,
+    "Total Hours": 120.0,
+    "Total Fee": 27600.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director (CW)",
+    "Hourly Rate": 230.0,
+    "Total Hours": 72.0,
+    "Total Fee": 16560.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (AD)",
+    "Hourly Rate": 170.0,
+    "Total Hours": 622.0,
+    "Total Fee": 105740.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (CW)",
+    "Hourly Rate": 170.0,
+    "Total Hours": 622.0,
+    "Total Fee": 105740.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 230.0,
+    "Total Hours": 53.0,
+    "Total Fee": 12610.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Designer",
+    "Hourly Rate": 150.0,
+    "Total Hours": 130.0,
+    "Total Fee": 19500.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Management",
+    "Role": "CCPO",
+    "Hourly Rate": 275.0,
+    "Total Hours": 6.0,
+    "Total Fee": 1650.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Head of Production",
+    "Hourly Rate": 230.0,
+    "Total Hours": 84.0,
+    "Total Fee": 19320.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Senior Producer",
+    "Hourly Rate": 170.0,
+    "Total Hours": 388.0,
+    "Total Fee": 65960.0,
+    "_source": "IG SOW combined.xlsx"
+  },
+  {
+    "Project": "IG SOW combined",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Production Assistant",
+    "Hourly Rate": 90.0,
+    "Total Hours": 144.0,
+    "Total Fee": 12960.0,
+    "_source": "IG SOW combined.xlsx"
   }
 ]
