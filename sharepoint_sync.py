@@ -902,6 +902,44 @@ def load_sow_data() -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
+def save_sow_schedule(schedule: dict) -> None:
+    """Persist monthly hour schedule to GitHub as sow_data/sow_schedule.json."""
+    import json, base64
+    content_str = json.dumps(schedule, indent=2)
+    encoded = base64.b64encode(content_str.encode()).decode()
+    filename = "sow_data/sow_schedule.json"
+    hdrs = _github_headers()
+    check = _session.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, timeout=10,
+    )
+    sha = check.json().get("sha") if check.status_code == 200 else None
+    payload = {"message": "Update SoW schedule", "content": encoded, "branch": "main"}
+    if sha:
+        payload["sha"] = sha
+    resp = _session.put(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, json=payload, timeout=15,
+    )
+    if resp.status_code not in (200, 201):
+        raise ValueError(f"Failed to save SoW schedule: {resp.text[:300]}")
+
+
+def load_sow_schedule() -> dict:
+    """Load persisted SoW monthly schedule from GitHub. Returns {} if none saved."""
+    import json, base64
+    hdrs = _github_headers()
+    resp = _session.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/sow_data/sow_schedule.json",
+        headers=hdrs, timeout=10,
+    )
+    if resp.status_code == 404:
+        return {}
+    if resp.status_code != 200:
+        raise ValueError(f"Failed to load SoW schedule: {resp.text[:200]}")
+    return json.loads(base64.b64decode(resp.json()["content"]).decode())
+
+
 def fetch_budget(token: str) -> dict:
     _load_globals()
     """

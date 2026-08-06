@@ -112,7 +112,7 @@ st.markdown(f"""
 import time
 
 try:
-    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept, save_pipeline_snapshot, list_pipeline_snapshots, load_pipeline_snapshot, save_sow_data, load_sow_data
+    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept, save_pipeline_snapshot, list_pipeline_snapshots, load_pipeline_snapshot, save_sow_data, load_sow_data, save_sow_schedule, load_sow_schedule
     SHAREPOINT_AVAILABLE = True
 except ImportError:
     SHAREPOINT_AVAILABLE = False
@@ -1878,6 +1878,134 @@ with tab_sow:
         gt_h = sow_df["Total Hours"].sum()
         gt_f = sow_df["Total Fee"].sum()
         st.markdown(f"**Grand Total — {gt_h:,.0f} hours | £{gt_f:,.0f}**")
+
+        # ── Monthly Schedule ──────────────────────────────────────────────────
+        st.markdown("---")
+        st.subheader("Monthly Schedule")
+        st.caption("Hours are spread evenly across active months by default. Edit any cell to override.")
+
+        _MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+        # Load persisted schedule
+        if "sow_schedule" not in st.session_state:
+            try:
+                st.session_state["sow_schedule"] = load_sow_schedule()
+            except Exception:
+                st.session_state["sow_schedule"] = {}
+        schedule = st.session_state["sow_schedule"]
+
+        projects = sorted(sow_df["Project"].dropna().unique().tolist())
+        sel_proj = st.selectbox("Select SoW / Project", projects, key="sched_proj")
+
+        if sel_proj:
+            proj_rows = sow_df[sow_df["Project"] == sel_proj].copy()
+            role_totals = proj_rows.groupby("Role")["Total Hours"].sum()
+
+            active_months = st.multiselect(
+                "Active months for this SoW",
+                _MONTHS,
+                default=schedule.get(sel_proj, {}).get("_active_months", _MONTHS),
+                key="sched_active_months",
+            )
+            n_active = max(len(active_months), 1)
+
+            # Build editable dataframe
+            sched_rows = []
+            saved_proj = schedule.get(sel_proj, {})
+            for role, total_hrs in role_totals.items():
+                per_month = round(total_hrs / n_active, 1)
+                row = {"Role": role}
+                for m in _MONTHS:
+                    if role in saved_proj and m in saved_proj[role]:
+                        row[m] = saved_proj[role][m]
+                    elif m in active_months:
+                        row[m] = per_month
+                    else:
+                        row[m] = 0.0
+                row["SoW Total"] = round(total_hrs, 1)
+                row["Scheduled"] = round(sum(row[m] for m in _MONTHS), 1)
+                sched_rows.append(row)
+
+            sched_df = pd.DataFrame(sched_rows)
+
+            col_config = {"Role": st.column_config.TextColumn("Role", disabled=True),
+                          "SoW Total": st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
+                          "Scheduled": st.column_config.NumberColumn("Scheduled ∑", disabled=True, format="%.1f")}
+            for m in _MONTHS:
+                col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
+
+            edited_df = st.data_editor(
+                sched_df,
+                column_config=col_config,
+                use_container_width=True,
+                hide_index=True,
+                key=f"sched_editor_{sel_proj}",
+                on_change=None,
+            )
+
+            # Recalculate Scheduled column live
+            edited_df["Scheduled"] = edited_df[_MONTHS].sum(axis=1).round(1)
+
+            # Highlight over/under
+            delta_rows = edited_df[abs(edited_df["Scheduled"] - edited_df["SoW Total"]) > 0.5]
+            if not delta_rows.empty:
+                st.warning(
+                    "Some roles differ from their SoW total: " +
+                    ", ".join(f"{r['Role']} ({r['Scheduled']:,.0f} vs {r['SoW Total']:,.0f})" for _, r in delta_rows.iterrows()),
+                    icon="⚠️",
+                )
+
+            if st.button("Save Schedule", key="sched_save"):
+                proj_schedule = {"_active_months": active_months}
+                for _, row in edited_df.iterrows():
+                    proj_schedule[row["Role"]] = {m: row[m] for m in _MONTHS}
+                schedule[sel_proj] = proj_schedule
+                st.session_state["sow_schedule"] = schedule
+                try:
+                    save_sow_schedule(schedule)
+                    st.success("Schedule saved.")
+                except Exception as e:
+                    st.error(f"Could not save: {e}")
+
+            # Monthly chart across all projects using saved + current project's edits
+            st.markdown("#### Monthly Hours — All Projects")
+            chart_rows = []
+            for proj in projects:
+                p_rows = sow_df[sow_df["Project"] == proj]
+                p_role_totals = p_rows.groupby("Role")["Total Hours"].sum()
+                p_saved = schedule.get(proj, {})
+                p_active = p_saved.get("_active_months", _MONTHS)
+                p_n = max(len(p_active), 1)
+                for role, total_hrs in p_role_totals.items():
+                    for m in _MONTHS:
+                        if proj == sel_proj:
+                            # Use live edited values for current project
+                            match = edited_df[edited_df["Role"] == role]
+                            hrs = float(match[m].values[0]) if not match.empty else 0.0
+                        elif role in p_saved and m in p_saved[role]:
+                            hrs = p_saved[role][m]
+                        else:
+                            hrs = round(total_hrs / p_n, 1) if m in p_active else 0.0
+                        dept = p_rows[p_rows["Role"] == role]["Department"].iloc[0] if not p_rows[p_rows["Role"] == role].empty else "Other"
+                        chart_rows.append({"Month": m, "Department": dept, "Hours": hrs})
+
+            if chart_rows:
+                chart_df = pd.DataFrame(chart_rows)
+                month_order = {m: i for i, m in enumerate(_MONTHS)}
+                chart_agg = chart_df.groupby(["Month", "Department"])["Hours"].sum().reset_index()
+                chart_agg["_ord"] = chart_agg["Month"].map(month_order)
+                chart_agg = chart_agg.sort_values("_ord").drop(columns="_ord")
+                fig_sched = px.bar(
+                    chart_agg, x="Month", y="Hours", color="Department",
+                    category_orders={"Month": _MONTHS},
+                    color_discrete_sequence=px.colors.qualitative.Pastel,
+                )
+                fig_sched.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#ffffff", legend_title_text="Department",
+                    margin=dict(t=20, b=20),
+                )
+                st.plotly_chart(fig_sched, use_container_width=True)
 
 
 # ── Floating AI Chat ──────────────────────────────────────────────────────────
