@@ -1349,17 +1349,6 @@ with tab_revenue:
             key="cmp_mode",
         )
 
-        def _pipeline_totals_for_months(pipe, keys, months):
-            frames = [pipe[k].copy() for k in keys if k in pipe and isinstance(pipe[k], pd.DataFrame)]
-            if not frames:
-                return pd.Series(dtype=float)
-            combined = pd.concat(frames, ignore_index=True)
-            for m in MONTHS:
-                if m in combined.columns:
-                    combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
-            cols = [m for m in months if m in combined.columns]
-            return combined.groupby("Client")[cols].sum().sum(axis=1)
-
         def _render_comparison(totals_a, totals_b, col_a, col_b):
             all_clients = sorted(set(totals_a.index) | set(totals_b.index))
             cmp_rows = []
@@ -1400,113 +1389,90 @@ with tab_revenue:
                 return ["color:#27ae60;font-weight:bold" if cv > 0 else ("color:#c0392b;font-weight:bold" if cv < 0 else "") if c in ("Change (£)", "Change (%)") else "" for c in row.index]
             st.dataframe(display_cmp.style.apply(_style_cmp, axis=1), use_container_width=True, hide_index=True)
 
-        # ── Month comparison (live data) ──────────────────────────────────────
+        # ── Period selector for Month / Quarter modes ─────────────────────────
         if cmp_mode == "Month":
-            st.subheader(f"Month-on-Month Comparison — {rv_period}")
-            mc1, mc2 = st.columns(2)
-            with mc1:
-                month_a = st.selectbox("Compare month", MONTHS, index=MONTHS.index(cur_month_name) if cur_month_name in MONTHS else 0, key="cmp_month_a")
-            with mc2:
-                month_b_opts = [m for m in MONTHS if m != month_a]
-                prev_idx = MONTHS.index(month_a) - 1
-                prev_month = MONTHS[prev_idx] if prev_idx >= 0 else MONTHS[-1]
-                month_b = st.selectbox("With month", month_b_opts, index=month_b_opts.index(prev_month) if prev_month in month_b_opts else 0, key="cmp_month_b")
-            totals_a = _pipeline_totals_for_months(pipeline, rv_keys, [month_a])
-            totals_b = _pipeline_totals_for_months(pipeline, rv_keys, [month_b])
-            _render_comparison(totals_a, totals_b, month_a, month_b)
-
-        # ── Quarter comparison (live data) ────────────────────────────────────
+            period_months = [st.selectbox("Month", MONTHS, index=MONTHS.index(cur_month_name) if cur_month_name in MONTHS else 0, key="cmp_month_sel")]
+            subheader_label = f"Comparing {period_months[0]} — {rv_period}"
         elif cmp_mode == "Quarter":
-            st.subheader(f"Quarter-on-Quarter Comparison — {rv_period}")
-            qc1, qc2 = st.columns(2)
-            quarter_labels = list(QUARTER_MONTHS.keys())
-            with qc1:
-                q_a = st.selectbox("Compare quarter", quarter_labels, index=0, key="cmp_q_a")
-            with qc2:
-                q_b_opts = [q for q in quarter_labels if q != q_a]
-                q_b = st.selectbox("With quarter", q_b_opts, index=0, key="cmp_q_b")
-            totals_a = _pipeline_totals_for_months(pipeline, rv_keys, QUARTER_MONTHS[q_a])
-            totals_b = _pipeline_totals_for_months(pipeline, rv_keys, QUARTER_MONTHS[q_b])
-            _render_comparison(totals_a, totals_b, q_a, q_b)
-
-        # ── Full Year (single view, no comparison needed) ─────────────────────
+            q_sel = st.selectbox("Quarter", list(QUARTER_MONTHS.keys()), index=0, key="cmp_q_sel")
+            period_months = QUARTER_MONTHS[q_sel]
+            subheader_label = f"Comparing {q_sel} — {rv_period}"
         elif cmp_mode == "Full Year":
-            st.subheader(f"Full Year — {rv_period}")
-            totals = _pipeline_totals_for_months(pipeline, rv_keys, MONTHS)
-            year_df = totals.reset_index()
-            year_df.columns = ["Client", "Total (Full Year)"]
-            year_df = year_df[year_df["Total (Full Year)"] > 0].sort_values("Total (Full Year)", ascending=False)
-            year_df["Total (Full Year)"] = year_df["Total (Full Year)"].apply(fmt_gbp)
-            st.metric("Grand Total", fmt_gbp(totals.sum()))
-            st.dataframe(year_df, use_container_width=True, hide_index=True)
-
-        # ── Week-on-Week (snapshot-based) ─────────────────────────────────────
+            period_months = MONTHS
+            subheader_label = f"Full Year Comparison — {rv_period}"
         else:
-            st.subheader(f"Week-on-Week Comparison — {rv_period}")
+            period_months = rv_months
+            subheader_label = f"Week-on-Week Comparison — {rv_period}"
 
-            if "snapshot_list" not in st.session_state:
+        st.subheader(subheader_label)
+
+        # ── Snapshot picker (shared by all modes) ─────────────────────────────
+        if "snapshot_list" not in st.session_state:
+            try:
+                st.session_state["snapshot_list"] = list_pipeline_snapshots()
+            except Exception:
+                st.session_state["snapshot_list"] = []
+        snapshots = st.session_state["snapshot_list"]
+
+        def _fmt_snap(date_str):
+            try:
+                import datetime as _dt2
+                d = _dt2.date.fromisoformat(date_str)
+                day = d.day
+                suffix = "th" if 11 <= (day % 100) <= 13 else {1:"st",2:"nd",3:"rd"}.get(day % 10, "th")
+                return f"{day}{suffix} {d.strftime('%b %Y')}"
+            except Exception:
+                return date_str
+
+        snap_label_a = "Compare date" if cmp_mode != "Week" else "Compare week"
+        snap_label_b = "With date"    if cmp_mode != "Week" else "With week"
+
+        if len(snapshots) < 1:
+            st.info("No snapshots saved yet. Click **Save Weekly Snapshot** in the sidebar every Thursday to build up your history.", icon="📸")
+        else:
+            snap_labels = {s: _fmt_snap(s) for s in snapshots}
+            cmp1, cmp2 = st.columns(2)
+            with cmp1:
+                snap_a_date = st.selectbox(snap_label_a, snapshots, index=0, key="snap_a", format_func=lambda s: snap_labels[s])
+            with cmp2:
+                snap_b_options = [s for s in snapshots if s != snap_a_date]
+                if snap_b_options:
+                    snap_b_date = st.selectbox(snap_label_b, snap_b_options, index=0, key="snap_b", format_func=lambda s: snap_labels[s])
+                else:
+                    snap_b_date = None
+                    st.info("Save at least 2 snapshots to compare.")
+
+            if snap_b_date:
+                cache_key_a = f"snap_data_{snap_a_date}"
+                cache_key_b = f"snap_data_{snap_b_date}"
+                if cache_key_a not in st.session_state:
+                    with st.spinner(f"Loading {_fmt_snap(snap_a_date)}..."):
+                        st.session_state[cache_key_a] = load_pipeline_snapshot(snap_a_date)
+                if cache_key_b not in st.session_state:
+                    with st.spinner(f"Loading {_fmt_snap(snap_b_date)}..."):
+                        st.session_state[cache_key_b] = load_pipeline_snapshot(snap_b_date)
+
                 try:
-                    st.session_state["snapshot_list"] = list_pipeline_snapshots()
-                except Exception:
-                    st.session_state["snapshot_list"] = []
-            snapshots = st.session_state["snapshot_list"]
+                    snap_a = st.session_state[cache_key_a]
+                    snap_b = st.session_state[cache_key_b]
 
-            def _fmt_snap(date_str):
-                try:
-                    import datetime as _dt2
-                    d = _dt2.date.fromisoformat(date_str)
-                    day = d.day
-                    suffix = "th" if 11 <= (day % 100) <= 13 else {1:"st",2:"nd",3:"rd"}.get(day % 10, "th")
-                    return f"{day}{suffix} {d.strftime('%b %Y')}"
-                except Exception:
-                    return date_str
+                    def _snap_totals(snap, keys, months):
+                        frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
+                        if not frames:
+                            return pd.Series(dtype=float)
+                        combined = pd.concat(frames, ignore_index=True)
+                        for m in MONTHS:
+                            if m in combined.columns:
+                                combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
+                        cols = [m for m in months if m in combined.columns]
+                        return combined.groupby("Client")[cols].sum().sum(axis=1)
 
-            if len(snapshots) < 1:
-                st.info("No snapshots saved yet. Click **Save Weekly Snapshot** in the sidebar every Thursday to build up your history.", icon="📸")
-            else:
-                snap_labels = {s: _fmt_snap(s) for s in snapshots}
-                cmp1, cmp2 = st.columns(2)
-                with cmp1:
-                    snap_a_date = st.selectbox("Compare week", snapshots, index=0, key="snap_a", format_func=lambda s: snap_labels[s])
-                with cmp2:
-                    snap_b_options = [s for s in snapshots if s != snap_a_date]
-                    if snap_b_options:
-                        snap_b_date = st.selectbox("With week", snap_b_options, index=0, key="snap_b", format_func=lambda s: snap_labels[s])
-                    else:
-                        snap_b_date = None
-                        st.info("Save at least 2 snapshots to compare.")
+                    totals_a = _snap_totals(snap_a, rv_keys, period_months)
+                    totals_b = _snap_totals(snap_b, rv_keys, period_months)
+                    _render_comparison(totals_a, totals_b, _fmt_snap(snap_a_date), _fmt_snap(snap_b_date))
 
-                if snap_b_date:
-                    cache_key_a = f"snap_data_{snap_a_date}"
-                    cache_key_b = f"snap_data_{snap_b_date}"
-                    if cache_key_a not in st.session_state:
-                        with st.spinner(f"Loading {_fmt_snap(snap_a_date)}..."):
-                            st.session_state[cache_key_a] = load_pipeline_snapshot(snap_a_date)
-                    if cache_key_b not in st.session_state:
-                        with st.spinner(f"Loading {_fmt_snap(snap_b_date)}..."):
-                            st.session_state[cache_key_b] = load_pipeline_snapshot(snap_b_date)
-
-                    try:
-                        snap_a = st.session_state[cache_key_a]
-                        snap_b = st.session_state[cache_key_b]
-
-                        def _snap_totals(snap, keys, months):
-                            frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
-                            if not frames:
-                                return pd.Series(dtype=float)
-                            combined = pd.concat(frames, ignore_index=True)
-                            for m in MONTHS:
-                                if m in combined.columns:
-                                    combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
-                            cols = [m for m in months if m in combined.columns]
-                            return combined.groupby("Client")[cols].sum().sum(axis=1)
-
-                        totals_a = _snap_totals(snap_a, rv_keys, rv_months)
-                        totals_b = _snap_totals(snap_b, rv_keys, rv_months)
-                        _render_comparison(totals_a, totals_b, _fmt_snap(snap_a_date), _fmt_snap(snap_b_date))
-
-                    except Exception as e:
-                        st.error(f"Could not load snapshots: {e}")
+                except Exception as e:
+                    st.error(f"Could not load snapshots: {e}")
 
         # ── Project drill-down ────────────────────────────────────────────────
         st.divider()
