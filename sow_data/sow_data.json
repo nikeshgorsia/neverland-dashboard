@@ -778,5 +778,105 @@
     "Total Hours": 104.0,
     "Total Fee": 9152.0,
     "_source": "Corporate Partners Fee APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Head of Client Service",
+    "Hourly Rate": 160.0,
+    "Total Hours": 12.0,
+    "Total Fee": 1920.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Director",
+    "Hourly Rate": 68.0,
+    "Total Hours": 16.0,
+    "Total Fee": 1088.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Manager",
+    "Hourly Rate": 40.0,
+    "Total Hours": 42.0,
+    "Total Fee": 1680.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Chief Strategy Officer",
+    "Hourly Rate": 216.0,
+    "Total Hours": 4.0,
+    "Total Fee": 864.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategy Director",
+    "Hourly Rate": 160.0,
+    "Total Hours": 32.0,
+    "Total Fee": 5120.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 160.0,
+    "Total Hours": 8.0,
+    "Total Fee": 1280.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative",
+    "Hourly Rate": 88.0,
+    "Total Hours": 56.0,
+    "Total Fee": 4928.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 160.0,
+    "Total Hours": 8.0,
+    "Total Fee": 1280.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Designer",
+    "Hourly Rate": 88.0,
+    "Total Hours": 80.0,
+    "Total Fee": 7040.0,
+    "_source": "Winter print SoW APPROVED.pdf"
+  },
+  {
+    "Project": "Winter print SoW APPROVED",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Producer",
+    "Hourly Rate": 60.0,
+    "Total Hours": 16.0,
+    "Total Fee": 960.0,
+    "_source": "Winter print SoW APPROVED.pdf"
   }
 ]
