@@ -2069,6 +2069,12 @@ with tab_sow:
                     col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
                 col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
+                st.markdown("""
+                <style>
+                [data-testid="stDataEditor"] [col-id="SoW Total"] { background: rgba(99,102,241,0.12) !important; }
+                [data-testid="stDataEditor"] [col-id="SoW Total (£)"] { background: rgba(236,72,153,0.12) !important; }
+                [data-testid="stDataEditor"] [col-id="Scheduled ∑"] { background: rgba(16,185,129,0.12) !important; }
+                </style>""", unsafe_allow_html=True)
                 edited_df = st.data_editor(
                     sched_df, column_config=col_config,
                     use_container_width=True, hide_index=True,
