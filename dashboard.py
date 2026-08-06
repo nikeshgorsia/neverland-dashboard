@@ -1839,7 +1839,7 @@ _components.html("""
     var doc = window.parent.document;
     var btns = doc.querySelectorAll('button');
     for (var i = 0; i < btns.length; i++) {
-      if (btns[i].textContent.trim() === '\u{1F4AC}') {
+      if (btns[i].textContent.trim() === '💬') {
         var el = btns[i].closest('[data-testid="element-container"]') || btns[i];
         el.style.setProperty('position', 'fixed', 'important');
         el.style.setProperty('bottom', '28px', 'important');
