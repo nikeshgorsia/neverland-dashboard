@@ -353,6 +353,95 @@ with st.sidebar:
         section = None
         selected_clients = []
 
+    # ── AI Assistant ──────────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("**Ask Neverland AI**")
+
+    if "chat_messages" not in st.session_state:
+        st.session_state["chat_messages"] = []
+
+    # Render existing messages
+    for _msg in st.session_state["chat_messages"]:
+        with st.chat_message(_msg["role"]):
+            st.markdown(_msg["content"])
+
+    chat_input = st.chat_input("Ask about your data...", key="sidebar_chat_input")
+    if chat_input:
+        st.session_state["chat_messages"].append({"role": "user", "content": chat_input})
+        with st.chat_message("user"):
+            st.markdown(chat_input)
+
+        # Build context from available dashboard data
+        _ctx_parts = []
+        if "pipeline" in st.session_state:
+            _pipe = st.session_state["pipeline"]
+            for _status, _df in _pipe.items():
+                if isinstance(_df, pd.DataFrame) and not _df.empty:
+                    _total = _df["Revenue"].sum() if "Revenue" in _df.columns else 0
+                    _ctx_parts.append(f"Pipeline {_status}: £{_total:,.0f} across {len(_df)} projects")
+        if "sow_data" in st.session_state and not st.session_state["sow_data"].empty:
+            _sow = st.session_state["sow_data"]
+            _sow_hrs = pd.to_numeric(_sow["Total Hours"], errors="coerce").sum()
+            _sow_fee = pd.to_numeric(_sow["Total Fee"], errors="coerce").sum()
+            _projs = _sow["Project"].nunique() if "Project" in _sow.columns else 0
+            _ctx_parts.append(f"Scope of Works: {_projs} projects, {_sow_hrs:,.0f} total hours, £{_sow_fee:,.0f} total fee")
+            _depts = _sow.groupby("Department").agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
+            for _d, _row in _depts.iterrows():
+                if _d:
+                    _ctx_parts.append(f"  Dept {_d}: {pd.to_numeric(_row['Hours'], errors='coerce'):,.0f} hrs, £{pd.to_numeric(_row['Fee'], errors='coerce'):,.0f}")
+        if "capacity" in st.session_state and isinstance(st.session_state["capacity"], pd.DataFrame):
+            _cap = st.session_state["capacity"]
+            _ctx_parts.append(f"Capacity data: {len(_cap)} rows loaded")
+        if "budget" in st.session_state and isinstance(st.session_state["budget"], pd.DataFrame):
+            _ctx_parts.append(f"Budget data: {len(st.session_state['budget'])} rows loaded")
+        if "salary_dept" in st.session_state and isinstance(st.session_state["salary_dept"], pd.DataFrame):
+            _sal = st.session_state["salary_dept"]
+            _ctx_parts.append(f"Salary by dept: {len(_sal)} rows loaded")
+
+        _dashboard_context = "\n".join(_ctx_parts) if _ctx_parts else "No dashboard data is currently loaded."
+
+        _system_prompt = (
+            "You are the Neverland Finance AI assistant, embedded in Neverland Creative Agency's "
+            "finance dashboard. You help the team understand their financial data — pipeline revenue, "
+            "capacity, budgets, and scope of works. Be concise and direct. Format numbers clearly. "
+            "Here is the current dashboard data:\n\n" + _dashboard_context
+        )
+
+        try:
+            import anthropic as _anthropic
+            _client = _anthropic.Anthropic(api_key=st.secrets.get("ANTHROPIC_API_KEY", ""))
+            _history = [
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state["chat_messages"][:-1]  # exclude latest user msg already added
+            ]
+            _history.append({"role": "user", "content": chat_input})
+
+            with st.chat_message("assistant"):
+                _placeholder = st.empty()
+                _full_response = ""
+                with _client.messages.stream(
+                    model="claude-opus-5",
+                    max_tokens=1024,
+                    system=_system_prompt,
+                    messages=_history,
+                ) as _stream:
+                    for _text in _stream.text_stream:
+                        _full_response += _text
+                        _placeholder.markdown(_full_response + "▌")
+                _placeholder.markdown(_full_response)
+
+            st.session_state["chat_messages"].append({"role": "assistant", "content": _full_response})
+
+        except Exception as _e:
+            _err = str(_e)
+            with st.chat_message("assistant"):
+                st.error(f"AI error: {_err}")
+            st.session_state["chat_messages"].append({"role": "assistant", "content": f"Error: {_err}"})
+
+    if st.session_state["chat_messages"] and st.button("Clear chat", key="clear_chat", use_container_width=True):
+        st.session_state["chat_messages"] = []
+        st.rerun()
+
 
 @st.dialog("Month Breakdown", width="large")
 def show_month_breakdown(month, pipeline, section, selected_clients, token):
