@@ -1282,22 +1282,14 @@ with tab_revenue:
             "Full Year":       MONTHS,
         }
 
-        rvc1, rvc2 = st.columns(2)
-        with rvc1:
-            rv_view = st.selectbox(
-                "Revenue type",
-                list(VIEW_OPTIONS.keys()),
-                index=list(VIEW_OPTIONS.keys()).index(st.session_state.get("pl_view_select", "Confirmed")),
-                key="rv_view_select",
-            )
-        with rvc2:
-            rv_period = st.selectbox(
-                "Period",
-                list(PERIOD_OPTIONS.keys()),
-                index=2,
-                key="rv_period_select",
-            )
-        rv_keys = VIEW_OPTIONS[rv_view]
+        rv_keys = section  # driven by sidebar "Revenue view" selector
+
+        rv_period = st.selectbox(
+            "Period",
+            list(PERIOD_OPTIONS.keys()),
+            index=2,
+            key="rv_period_select",
+        )
         rv_months = PERIOD_OPTIONS[rv_period]
 
         rv_frames = [
