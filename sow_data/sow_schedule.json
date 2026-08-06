@@ -15,9 +15,9 @@
       "Dec"
     ],
     "Account Manager": {
-      "Jan": 33.7,
-      "Feb": 33.3,
-      "Mar": 33.3,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 200.0,
       "May": 200.0,
       "Jun": 33.3,
@@ -29,9 +29,9 @@
       "Dec": 33.3
     },
     "Business Director": {
-      "Jan": 25.3,
-      "Feb": 25.7,
-      "Mar": 25.7,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 25.7,
       "May": 25.7,
       "Jun": 25.7,
@@ -43,9 +43,9 @@
       "Dec": 25.7
     },
     "CEO": {
-      "Jan": 1.5,
-      "Feb": 1.5,
-      "Mar": 1.5,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 1.5,
       "May": 1.5,
       "Jun": 1.5,
@@ -57,9 +57,9 @@
       "Dec": 1.5
     },
     "Creative Director": {
-      "Jan": 5.3,
-      "Feb": 5.7,
-      "Mar": 5.7,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 5.7,
       "May": 5.7,
       "Jun": 5.7,
@@ -71,9 +71,9 @@
       "Dec": 5.7
     },
     "Executive Producer": {
-      "Jan": 2.3,
-      "Feb": 2.7,
-      "Mar": 2.7,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 2.7,
       "May": 2.7,
       "Jun": 2.7,
@@ -85,9 +85,9 @@
       "Dec": 2.7
     },
     "Founder, Brand Strategy": {
-      "Jan": 6.3,
-      "Feb": 6.7,
-      "Mar": 6.7,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 6.7,
       "May": 6.7,
       "Jun": 6.7,
@@ -99,9 +99,9 @@
       "Dec": 6.7
     },
     "Founder, Creative Comms": {
-      "Jan": 6.7,
-      "Feb": 6.3,
-      "Mar": 6.3,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 6.3,
       "May": 6.3,
       "Jun": 6.3,
@@ -113,9 +113,9 @@
       "Dec": 6.3
     },
     "Head of CS": {
-      "Jan": 14.5,
-      "Feb": 14.5,
-      "Mar": 14.5,
+      "Jan": NaN,
+      "Feb": NaN,
+      "Mar": NaN,
       "Apr": 14.5,
       "May": 14.5,
       "Jun": 14.5,
