@@ -1740,44 +1740,77 @@ with tab_sow:
         return out[["Project","Client","Department","Role","Hourly Rate","Total Hours","Total Fee"]]
 
     def _parse_pdf_sow(file_bytes: bytes, filename: str):
-        """Extract a role/hours/fee table from a PDF SoW using PyMuPDF."""
+        """Parse the Neverland fee template PDF format.
+
+        Page 2 has two side-by-side tables detected separately by PyMuPDF:
+          Table 0 (left):  Department/Job Title | Name | Hourly Rate
+          Table 1 (right): Hours_A | Fee_A | Hours_B | Fee_B  (per phase column pairs)
+        Both tables share the same row indices — zip them to get full rows.
+        """
         try:
-            import fitz, io, re
+            import fitz, re
+
+            def _num(s):
+                try:
+                    return float(re.sub(r"[£,\s]", "", s or ""))
+                except ValueError:
+                    return 0.0
+
+            _SKIP_PREFIX = ("total", "gbp", "department", "name", "hourly", "hours", "fee",
+                            "nov-", "dec-", "jan-", "feb-", "mar-", "apr-",
+                            "may-", "jun-", "jul-", "aug-", "sep-", "oct-")
+            _DEPTS = {"management", "client service", "strategy", "creative", "production",
+                      "creative & design", "design", "technology", "finance", "pr"}
+
             doc = fitz.open(stream=file_bytes, filetype="pdf")
-            rows_out = []
             project_name = filename.rsplit(".", 1)[0]
-            current_dept = ""
+            rows_out = []
+
             for page in doc:
-                blocks = page.get_text("blocks")
-                lines = []
-                for b in sorted(blocks, key=lambda b: (round(b[1] / 10), b[0])):
-                    text = b[4].strip()
-                    if text:
-                        lines.extend(text.split("\n"))
-                for line in lines:
-                    line = line.strip()
-                    if not line:
+                tables = page.find_tables()
+                if not tables or not tables.tables:
+                    continue
+                # Find the left table (role names) and right table (hours/fees)
+                # Left table has 3 cols (role, name, rate); right has 4 cols (hrs,fee pairs)
+                left = next((t for t in tables.tables if t.col_count == 3), None)
+                right = next((t for t in tables.tables if t.col_count == 4), None)
+                if left is None:
+                    continue
+                left_rows  = left.extract()
+                right_rows = right.extract() if right else []
+                current_dept = ""
+                for i, row in enumerate(left_rows):
+                    cell0 = str(row[0] or "").strip()
+                    cell1 = str(row[1] or "").strip()
+                    c0_lower = cell0.lower()
+                    if not cell0:
                         continue
-                    # Try to detect a data row: Role | Rate | Hours | Fee
-                    nums = re.findall(r"[\d,]+\.?\d*", line)
-                    if len(nums) >= 2:
-                        # last two numbers treated as hours and fee
-                        try:
-                            hrs = float(nums[-2].replace(",", ""))
-                            fee = float(nums[-1].replace(",", ""))
-                            role = re.sub(r"[\d,£\.\s]+$", "", line).strip()
-                            if role and hrs > 0:
-                                rows_out.append({
-                                    "Project": project_name, "Client": "",
-                                    "Department": current_dept, "Role": role,
-                                    "Hourly Rate": 0, "Total Hours": hrs, "Total Fee": fee,
-                                })
-                        except ValueError:
-                            pass
-                    else:
-                        # Likely a section header / department name
-                        if len(line) < 60 and not any(c.isdigit() for c in line):
-                            current_dept = line
+                    if c0_lower.startswith(_SKIP_PREFIX) or c0_lower in _DEPTS:
+                        if c0_lower in _DEPTS:
+                            current_dept = cell0
+                        continue
+                    # Must have a Name in col 1 to be a real role row
+                    if not cell1:
+                        continue
+                    role = cell0
+                    rate_str = str(row[2] or "")
+                    rate = _num(rate_str)
+                    # Get hours/fees from right table at same row
+                    total_hrs = total_fee = 0.0
+                    if i + 1 < len(right_rows):
+                        nums = [_num(c) for c in (right_rows[i + 1] or [])]
+                        total_hrs = sum(nums[j] for j in range(0, len(nums), 2))
+                        total_fee = sum(nums[j] for j in range(1, len(nums), 2))
+                    if total_hrs > 0 or total_fee > 0:
+                        rows_out.append({
+                            "Project":     project_name,
+                            "Client":      "",
+                            "Department":  current_dept,
+                            "Role":        role,
+                            "Hourly Rate": rate,
+                            "Total Hours": total_hrs,
+                            "Total Fee":   total_fee,
+                        })
             doc.close()
             if rows_out:
                 return pd.DataFrame(rows_out)
