@@ -1904,12 +1904,13 @@ with tab_sow:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
-                    c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
+                    c1, c2, c3 = st.columns([3, 3, 1])
                     new_proj = c1.text_input("Project name", value=cur_proj, key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
                     _client_opts = [""] + _pipe_clients
                     _client_idx  = _client_opts.index(cur_client) if cur_client in _client_opts else 0
                     new_client = c2.selectbox("Client", options=_client_opts, index=_client_idx, key=f"client_{src}", label_visibility="collapsed")
-                    if c3.button("Save", key=f"rename_sow_{src}"):
+                    # Auto-save on any change
+                    if new_proj != cur_proj or new_client != cur_client:
                         mask = st.session_state["sow_data"]["_source"] == src
                         st.session_state["sow_data"].loc[mask, "Project"] = new_proj
                         st.session_state["sow_data"].loc[mask, "Client"]  = new_client
@@ -1917,8 +1918,7 @@ with tab_sow:
                             save_sow_data(st.session_state["sow_data"])
                         except Exception:
                             pass
-                        st.rerun()
-                    if c4.button("Remove", key=f"rm_sow_{src}"):
+                    if c3.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
                             st.session_state["sow_data"]["_source"] != src
                         ].reset_index(drop=True)
