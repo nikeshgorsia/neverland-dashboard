@@ -2036,7 +2036,8 @@ with tab_sow:
             sel_proj = st.selectbox("Select SoW / Project", projects, key="sched_proj")
             if sel_proj:
                 proj_rows = sow_df[sow_df["Project"] == sel_proj].copy()
-                role_totals = proj_rows.groupby("Role")["Total Hours"].sum()
+                role_totals     = proj_rows.groupby("Role")["Total Hours"].sum()
+                role_fee_totals = proj_rows.groupby("Role")["Total Fee"].sum()
                 active_months = _MS
                 n_active = 12
                 sched_rows = []
@@ -2054,16 +2055,20 @@ with tab_sow:
                         drift = round(total_hrs - sum(row[m] for m in _MS), 1)
                         row[_MS[0]] = round(row[_MS[0]] + drift, 1)
                     row["SoW Total"] = round(total_hrs, 1)
+                    row["SoW Total (£)"] = round(float(role_fee_totals.get(role, 0)), 0)
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     sched_rows.append(row)
                 sched_df = pd.DataFrame(sched_rows)
                 col_config = {
-                    "Role":      st.column_config.TextColumn("Role", disabled=True),
-                    "SoW Total": st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
-                    "Scheduled": st.column_config.NumberColumn("Scheduled ∑", disabled=True, format="%.1f"),
+                    "Role":         st.column_config.TextColumn("Role", disabled=True),
+                    "SoW Total":    st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
+                    "SoW Total (£)": st.column_config.NumberColumn("SoW Total (£)", disabled=True, format="£%.0f"),
+                    "Scheduled":    st.column_config.NumberColumn("Scheduled ∑", disabled=True, format="%.1f"),
                 }
                 for m in _MS:
                     col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
+                sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 edited_df = st.data_editor(
                     sched_df, column_config=col_config,
                     use_container_width=True, hide_index=True,
