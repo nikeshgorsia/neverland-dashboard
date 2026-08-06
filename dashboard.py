@@ -1756,9 +1756,29 @@ def _build_chat_context():
     parts = []
     if "pipeline" in st.session_state:
         for _status, _df in st.session_state["pipeline"].items():
-            if isinstance(_df, pd.DataFrame) and not _df.empty:
-                _total = _df["Revenue"].sum() if "Revenue" in _df.columns else 0
-                parts.append(f"Pipeline {_status}: £{_total:,.0f} across {len(_df)} projects")
+            if not isinstance(_df, pd.DataFrame) or _df.empty:
+                continue
+            _month_cols = [m for m in MONTHS if m in _df.columns]
+            if _month_cols:
+                _num = _df[_month_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
+                _annual = _num.values.sum()
+                parts.append(f"\nPipeline status: {_status} — Annual total: £{_annual:,.0f}")
+                # Monthly totals
+                _monthly = _num.sum()
+                for _m in MONTHS:
+                    if _m in _monthly.index:
+                        parts.append(f"  {_m}: £{_monthly[_m]:,.0f}")
+                # Per-client breakdown
+                if "Client" in _df.columns:
+                    for _, _row in _df.iterrows():
+                        _client = _row.get("Client", "Unknown")
+                        _project = _row.get("Project", "")
+                        _label = f"{_client}" + (f" / {_project}" if _project else "")
+                        _row_nums = pd.to_numeric(_row[_month_cols], errors="coerce").fillna(0)
+                        _row_total = _row_nums.sum()
+                        if _row_total > 0:
+                            _mvals = ", ".join(f"{m}:£{_row_nums[m]:,.0f}" for m in MONTHS if m in _row_nums.index and _row_nums[m] > 0)
+                            parts.append(f"  {_label}: £{_row_total:,.0f} total ({_mvals})")
     if "sow_data" in st.session_state and not st.session_state["sow_data"].empty:
         _sow = st.session_state["sow_data"]
         _hrs = pd.to_numeric(_sow["Total Hours"], errors="coerce").sum()
