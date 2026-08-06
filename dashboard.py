@@ -1811,13 +1811,23 @@ with tab_sow:
             # ── manage loaded files ───────────────────────────────────────────
             sources = sow_df["_source"].unique().tolist()
             with st.expander(f"Manage loaded files ({len(sources)})", expanded=False):
+                # Build client list from pipeline
+                _pipe_clients = []
+                if "pipeline" in st.session_state:
+                    for _pdf in st.session_state["pipeline"].values():
+                        if isinstance(_pdf, pd.DataFrame) and "Client" in _pdf.columns:
+                            _pipe_clients.extend(_pdf["Client"].dropna().unique().tolist())
+                _pipe_clients = sorted(set(_pipe_clients))
+
                 for src in sources:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
                     c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
-                    new_proj   = c1.text_input("Project name", value=cur_proj,   key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
-                    new_client = c2.text_input("Client",       value=cur_client, key=f"client_{src}",    label_visibility="collapsed", placeholder="Client")
+                    new_proj = c1.text_input("Project name", value=cur_proj, key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
+                    _client_opts = [""] + _pipe_clients
+                    _client_idx  = _client_opts.index(cur_client) if cur_client in _client_opts else 0
+                    new_client = c2.selectbox("Client", options=_client_opts, index=_client_idx, key=f"client_{src}", label_visibility="collapsed")
                     if c3.button("Save", key=f"rename_sow_{src}"):
                         mask = st.session_state["sow_data"]["_source"] == src
                         st.session_state["sow_data"].loc[mask, "Project"] = new_proj
