@@ -1682,8 +1682,8 @@ with tab_sow:
             if dept == "Client Service" and "strategy" in role_str.lower():
                 dept = "Strategy"
             # CEO and CCPO always go under Management
-            _MANAGEMENT_ROLES = {"ceo", "ccpo", "chief executive", "chief client"}
-            if any(kw in role_str.lower() for kw in _MANAGEMENT_ROLES):
+            _MANAGEMENT_ROLES = {"ceo", "ccpo"}
+            if any(kw == role_str.strip().lower() for kw in _MANAGEMENT_ROLES):
                 dept = "Management"
             rows_out.append({
                 "Project":      project_name,
