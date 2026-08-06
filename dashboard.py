@@ -1676,6 +1676,8 @@ with tab_sow:
                 continue
 
             dept = dept_str if dept_str else current_dept
+            _DEPT_RENAME = {"Account": "Client Service", "Total Account": "Client Service"}
+            dept = _DEPT_RENAME.get(dept, dept)
             rows_out.append({
                 "Project":      project_name,
                 "Client":       client_name,
