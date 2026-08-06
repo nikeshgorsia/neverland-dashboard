@@ -1950,7 +1950,10 @@ with tab_sow:
                     st.session_state["sow_schedule"] = schedule
                     try:
                         save_sow_schedule(schedule)
+                        # clear editor delta state so next render uses saved values cleanly
+                        st.session_state.pop(f"sched_editor_{sel_proj}", None)
                         st.success("Schedule saved.")
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Could not save: {e}")
                 st.markdown("#### Monthly Hours — All Projects")
