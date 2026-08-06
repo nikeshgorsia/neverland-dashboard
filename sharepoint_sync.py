@@ -6,6 +6,13 @@ import numpy as np
 from dotenv import load_dotenv
 from msal import PublicClientApplication, SerializableTokenCache
 
+# Reuse a single HTTP connection to graph.microsoft.com across all API calls
+_session = requests.Session()
+
+# Cache SharePoint driveItem metadata (drive_id, item_id) so each function
+# doesn't repeat the /shares/{url}/driveItem lookup on every refresh.
+_drive_item_cache: dict = {}
+
 load_dotenv()
 
 def _get_secret(key):
@@ -55,6 +62,24 @@ MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 SECTIONS = ["CONFIRMED", "PROPOSED", "POTENTIAL", "ACCOUNT PLANNING", "SPECULATIVE"]
+
+
+def _get_drive_ids(token: str, url: str):
+    """Return (drive_id, item_id) for a SharePoint URL, using a module-level cache."""
+    if url in _drive_item_cache:
+        return _drive_item_cache[url]
+    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(url.encode()).decode().rstrip('=')}"
+    hdrs = {"Authorization": f"Bearer {token}"}
+    resp = _session.get(
+        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
+        headers=hdrs, timeout=15,
+    )
+    if resp.status_code != 200:
+        raise ValueError(f"Cannot access file: {resp.status_code} {resp.text[:200]}")
+    item = resp.json()
+    result = (item["parentReference"]["driveId"], item["id"])
+    _drive_item_cache[url] = result
+    return result
 
 
 def _load_cache():
@@ -136,19 +161,11 @@ def _clean_value(val):
 def _download_raw(token):
     _load_globals()
     headers = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
-        headers=headers,
+    drive_id, item_id = _get_drive_ids(token, FILE_URL)
+    download_url = (
+        f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/content"
     )
-    if resp.status_code == 200:
-        item = resp.json()
-        download_url = item.get("@microsoft.graph.downloadUrl") or \
-            f"https://graph.microsoft.com/v1.0/drives/{item['parentReference']['driveId']}/items/{item['id']}/content"
-    else:
-        raise ValueError(f"Could not access file: {resp.status_code} {resp.text[:200]}")
-
-    file_resp = requests.get(download_url, headers=headers, allow_redirects=True)
+    file_resp = _session.get(download_url, headers=headers, allow_redirects=True)
     if file_resp.status_code != 200:
         raise ValueError(f"Could not download file: {file_resp.status_code}")
     return file_resp.content
@@ -165,21 +182,10 @@ def _fetch_sheet_via_graph(token: str) -> pd.DataFrame:
     _load_globals()
     """Use Graph Excel API to get formula-evaluated values from Grand Summary."""
     headers = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
-
-    # Get drive item ID
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
-        headers=headers,
-    )
-    if resp.status_code != 200:
-        raise ValueError(f"Could not access file: {resp.text[:200]}")
-    item = resp.json()
-    drive_id = item["parentReference"]["driveId"]
-    item_id  = item["id"]
+    drive_id, item_id = _get_drive_ids(token, FILE_URL)
 
     # Use Excel API to get used range with calculated values
-    range_resp = requests.get(
+    range_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
         f"/workbook/worksheets/Grand Summary/usedRange",
         headers=headers,
@@ -195,14 +201,8 @@ def _get_drive_item(token: str):
     _load_globals()
     """Return (headers, drive_id, item_id) for the pipeline file."""
     hdrs = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(FILE_URL.encode()).decode().rstrip('=')}"
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem", headers=hdrs
-    )
-    if resp.status_code != 200:
-        raise ValueError(f"Could not access file: {resp.text[:200]}")
-    item = resp.json()
-    return hdrs, item["parentReference"]["driveId"], item["id"]
+    drive_id, item_id = _get_drive_ids(token, FILE_URL)
+    return hdrs, drive_id, item_id
 
 
 def fetch_client_projects(token: str, client_name: str, month: str) -> dict:
@@ -219,7 +219,7 @@ def fetch_client_projects(token: str, client_name: str, month: str) -> dict:
 
     # URL-encode the sheet name
     sheet = requests.utils.quote(client_name, safe="")
-    resp = requests.get(
+    resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
         f"/workbook/worksheets/{sheet}/usedRange",
         headers=hdrs,
@@ -445,19 +445,9 @@ def fetch_capacity(token: str) -> pd.DataFrame:
     Returns long-format DataFrame: Department, Month, Value
     """
     hdrs = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(BUDGET_URL.encode()).decode().rstrip('=')}"
+    drive_id, item_id = _get_drive_ids(token, BUDGET_URL)
 
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
-        headers=hdrs, timeout=10,
-    )
-    if resp.status_code != 200:
-        raise ValueError(f"Cannot access budget file: {resp.text[:200]}")
-    item     = resp.json()
-    drive_id = item["parentReference"]["driveId"]
-    item_id  = item["id"]
-
-    sheets_resp = requests.get(
+    sheets_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets",
         headers=hdrs, timeout=10,
     )
@@ -467,7 +457,7 @@ def fetch_capacity(token: str) -> pd.DataFrame:
         raise ValueError(f"Cannot find Capacity sheet. Available: {[s['name'] for s in sheets]}")
 
     sheet_enc = requests.utils.quote(cap_sheet, safe="")
-    range_resp = requests.get(
+    range_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
         f"/workbook/worksheets/{sheet_enc}/usedRange",
         headers=hdrs, timeout=15,
@@ -564,19 +554,9 @@ def fetch_scope(token: str) -> pd.DataFrame:
     Returns long-format DataFrame: Department, Month, Chargeout
     """
     hdrs = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(SCOPE_URL.encode()).decode().rstrip('=')}"
+    drive_id, item_id = _get_drive_ids(token, SCOPE_URL)
 
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
-        headers=hdrs, timeout=10,
-    )
-    if resp.status_code != 200:
-        raise ValueError(f"Cannot access scope file: {resp.text[:200]}")
-    item     = resp.json()
-    drive_id = item["parentReference"]["driveId"]
-    item_id  = item["id"]
-
-    sheets_resp = requests.get(
+    sheets_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets",
         headers=hdrs, timeout=10,
     )
@@ -596,7 +576,7 @@ def fetch_scope(token: str) -> pd.DataFrame:
 
     def _fetch_dept_sheet(sheet, dept_name):
         sheet_enc = requests.utils.quote(sheet["name"], safe="")
-        raw_resp = requests.get(
+        raw_resp = _session.get(
             f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
             f"/workbook/worksheets/{sheet_enc}/usedRange",
             headers=hdrs, timeout=15,
@@ -669,16 +649,16 @@ def fetch_scope_structure_debug(token: str) -> list:
     """Return all rows from the MANAGEMENT sheet to see section structure."""
     hdrs = {"Authorization": f"Bearer {token}"}
     sharing_url = f"u!{__import__('base64').urlsafe_b64encode(SCOPE_URL.encode()).decode().rstrip('=')}"
-    resp = requests.get(f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem", headers=hdrs, timeout=10)
+    resp = _session.get(f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem", headers=hdrs, timeout=10)
     item = resp.json()
     drive_id = item["parentReference"]["driveId"]
     item_id  = item["id"]
-    sheets_resp = requests.get(f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets", headers=hdrs, timeout=10)
+    sheets_resp = _session.get(f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets", headers=hdrs, timeout=10)
     sheets = sheets_resp.json().get("value", [])
     # Get MANAGEMENT sheet
     mgmt = next((s for s in sheets if s["name"].upper() == "MANAGEMENT"), sheets[1])
     sheet_enc = requests.utils.quote(mgmt["name"], safe="")
-    raw_resp = requests.get(
+    raw_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets/{sheet_enc}/usedRange",
         headers=hdrs, timeout=15,
     )
@@ -694,18 +674,12 @@ def fetch_salary_by_dept(token: str) -> pd.DataFrame:
     """
     _load_globals()
     hdrs = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(BUDGET_URL.encode()).decode().rstrip('=')}"
-    resp = requests.get(f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem", headers=hdrs, timeout=10)
-    if resp.status_code != 200:
-        raise ValueError(f"Cannot access budget file: {resp.text[:200]}")
-    item = resp.json()
-    drive_id = item["parentReference"]["driveId"]
-    item_id  = item["id"]
+    drive_id, item_id = _get_drive_ids(token, BUDGET_URL)
 
-    sheets = requests.get(f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets", headers=hdrs, timeout=10).json()["value"]
+    sheets = _session.get(f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets", headers=hdrs, timeout=10).json()["value"]
     sal_sheet = next(s for s in sheets if "salary" in s["name"].lower())
     sheet_enc = requests.utils.quote(sal_sheet["name"], safe="")
-    rows = requests.get(
+    rows = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets/{sheet_enc}/usedRange",
         headers=hdrs, timeout=15
     ).json().get("values", [])
@@ -747,7 +721,7 @@ def fetch_scope_debug(token: str) -> dict:
     """Fetch raw data from first sheet of scope tracker for debugging."""
     hdrs = {"Authorization": f"Bearer {token}"}
     sharing_url = f"u!{__import__('base64').urlsafe_b64encode(SCOPE_URL.encode()).decode().rstrip('=')}"
-    resp = requests.get(
+    resp = _session.get(
         f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
         headers=hdrs, timeout=10,
     )
@@ -757,7 +731,7 @@ def fetch_scope_debug(token: str) -> dict:
     drive_id = item["parentReference"]["driveId"]
     item_id  = item["id"]
 
-    sheets_resp = requests.get(
+    sheets_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets",
         headers=hdrs, timeout=10,
     )
@@ -766,7 +740,7 @@ def fetch_scope_debug(token: str) -> dict:
 
     # Fetch first sheet raw
     first_sheet = requests.utils.quote(sheets[0]["name"], safe="")
-    raw_resp = requests.get(
+    raw_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
         f"/workbook/worksheets/{first_sheet}/usedRange",
         headers=hdrs, timeout=15,
@@ -813,7 +787,7 @@ def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
     encoded = base64.b64encode(content_str.encode()).decode()
 
     hdrs = _github_headers()
-    check = requests.get(
+    check = _session.get(
         f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
         headers=hdrs, timeout=10,
     )
@@ -823,7 +797,7 @@ def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
     if sha:
         payload["sha"] = sha
 
-    resp = requests.put(
+    resp = _session.put(
         f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
         headers=hdrs, json=payload, timeout=15,
     )
@@ -835,7 +809,7 @@ def save_pipeline_snapshot(pipeline_data: dict, date_str: str = None) -> str:
 def list_pipeline_snapshots() -> list:
     """Return list of available snapshot date strings, newest first."""
     hdrs = _github_headers()
-    resp = requests.get(
+    resp = _session.get(
         f"https://api.github.com/repos/{GITHUB_REPO}/contents/snapshots",
         headers=hdrs, timeout=10,
     )
@@ -857,7 +831,7 @@ def load_pipeline_snapshot(date_str: str) -> dict:
     import json, base64
     hdrs = _github_headers()
     filename = f"snapshots/snapshot_{date_str}.json"
-    resp = requests.get(
+    resp = _session.get(
         f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
         headers=hdrs, timeout=10,
     )
@@ -884,20 +858,10 @@ def fetch_budget(token: str) -> dict:
     Each value is a dict of {month: value}.
     """
     hdrs = {"Authorization": f"Bearer {token}"}
-    sharing_url = f"u!{__import__('base64').urlsafe_b64encode(BUDGET_URL.encode()).decode().rstrip('=')}"
-
-    resp = requests.get(
-        f"https://graph.microsoft.com/v1.0/shares/{sharing_url}/driveItem",
-        headers=hdrs, timeout=10,
-    )
-    if resp.status_code != 200:
-        raise ValueError(f"Cannot access budget file: {resp.text[:200]}")
-    item     = resp.json()
-    drive_id = item["parentReference"]["driveId"]
-    item_id  = item["id"]
+    drive_id, item_id = _get_drive_ids(token, BUDGET_URL)
 
     # Get sheet list to find 2nd sheet name
-    sheets_resp = requests.get(
+    sheets_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}/workbook/worksheets",
         headers=hdrs, timeout=10,
     )
@@ -913,7 +877,7 @@ def fetch_budget(token: str) -> dict:
         raise ValueError(f"Cannot find Summary P&L sheet. Available: {sheet_names}")
     summary_sheet = requests.utils.quote(target, safe="")
 
-    range_resp = requests.get(
+    range_resp = _session.get(
         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
         f"/workbook/worksheets/{summary_sheet}/usedRange",
         headers=hdrs, timeout=15,
@@ -991,7 +955,7 @@ def fetch_budget(token: str) -> dict:
     detail_sheet_name = next((s["name"] for s in sheets if "detail p&l" in s["name"].lower()), None)
     if detail_sheet_name:
         detail_sheet = requests.utils.quote(detail_sheet_name, safe="")
-        det_resp = requests.get(
+        det_resp = _session.get(
             f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
             f"/workbook/worksheets/{detail_sheet}/usedRange",
             headers=hdrs, timeout=15,
@@ -1030,7 +994,7 @@ def fetch_budget(token: str) -> dict:
                 EXCEL_MONTH_COLS = "IJKLMNOPQRST"  # I=Jan through T=Dec
                 for deduct_row in [24, 54]:
                     addr = f"I{deduct_row}:T{deduct_row}"
-                    cell_resp = requests.get(
+                    cell_resp = _session.get(
                         f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{item_id}"
                         f"/workbook/worksheets/{detail_sheet}/range(address='{addr}')",
                         headers=hdrs, timeout=10,

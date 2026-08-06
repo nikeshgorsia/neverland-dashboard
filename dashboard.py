@@ -122,6 +122,37 @@ MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 REFRESH_INTERVAL = 1800  # auto-refresh every 30 minutes
 
+# ── Cross-session data cache (shared across users, 30-min TTL) ────────────────
+# The _token arg is excluded from the cache key (leading underscore) so all
+# sessions within the TTL window return the same cached result without re-fetching.
+if SHAREPOINT_AVAILABLE:
+    @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
+    def _cf_pipeline(_token):
+        return fetch_pipeline(_token)
+
+    @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
+    def _cf_budget(_token):
+        return fetch_budget(_token)
+
+    @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
+    def _cf_capacity(_token):
+        return fetch_capacity(_token)
+
+    @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
+    def _cf_scope(_token):
+        return fetch_scope(_token)
+
+    @st.cache_data(ttl=REFRESH_INTERVAL, show_spinner=False)
+    def _cf_salary(_token):
+        return fetch_salary_by_dept(_token)
+
+    def _clear_data_caches():
+        _cf_pipeline.clear()
+        _cf_budget.clear()
+        _cf_capacity.clear()
+        _cf_scope.clear()
+        _cf_salary.clear()
+
 # ── Restore token + auto-sync on every cold open ──────────────────────────────
 if SHAREPOINT_AVAILABLE and "sp_token" not in st.session_state:
     try:
@@ -132,95 +163,104 @@ if SHAREPOINT_AVAILABLE and "sp_token" not in st.session_state:
     except Exception:
         pass
 
-# ── Auto-refresh on page load or every 5 minutes ──────────────────────────────
+# ── Auto-refresh: two-phase loading ──────────────────────────────────────────
+# Phase 1 (fast): load pipeline only → show dashboard immediately.
+# Phase 2 (deferred): load remaining sources in the background after phase 1.
+# After the first load, st.cache_data keeps results for 30 min across all
+# sessions/users — subsequent loads return from cache in milliseconds.
+_LOADING_CSS = f"""
+<style>
+@keyframes clouds-drift {{
+    0%   {{ transform: scale(1.1) translateX(0px); }}
+    100% {{ transform: scale(1.1) translateX(-120px); }}
+}}
+@keyframes sweep {{
+    0%   {{ clip-path: inset(0 100% 0 0); }}
+    60%  {{ clip-path: inset(0 0% 0 0); }}
+    85%  {{ clip-path: inset(0 0% 0 0); opacity: 1; }}
+    100% {{ clip-path: inset(0 0% 0 0); opacity: 0; }}
+}}
+.nv-bg {{
+    position: fixed; inset: -10%;
+    background: url('data:image/jpeg;base64,{_bg_b64}') center/cover no-repeat;
+    animation: clouds-drift 20s linear infinite; z-index: 0;
+}}
+.nv-loading-content {{
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+}}
+.nv-loading-text {{
+    font-family: 'FuturaPT-Bold', sans-serif; font-size: 1.4rem;
+    color: #FFFFFF; letter-spacing: 0.18em; text-transform: uppercase;
+    animation: sweep 2s ease-in-out infinite; white-space: nowrap;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}}
+</style>
+<div style="position:fixed;inset:0;z-index:9999;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;">
+  <div class="nv-bg"></div>
+  <div class="nv-loading-content">
+    <img src="data:image/png;base64,{_logo_b64}"
+        style="width:300px;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.2))">
+    <p class="nv-loading-text" style="margin-top:8px;">{{msg}}</p>
+  </div>
+</div>
+"""
+
 if SHAREPOINT_AVAILABLE and "sp_token" in st.session_state:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     last_refresh  = st.session_state.get("last_refresh", 0)
     now           = time.time()
-    needs_refresh = ("pipeline" not in st.session_state) or (now - last_refresh > REFRESH_INTERVAL)
-    if needs_refresh and not st.session_state.get("_refreshing"):
+    pipeline_stale = ("pipeline" not in st.session_state) or (now - last_refresh > REFRESH_INTERVAL)
+    secondary_needed = "pipeline" in st.session_state and (
+        "budget" not in st.session_state or
+        "capacity" not in st.session_state or
+        "scope" not in st.session_state or
+        "salary_dept" not in st.session_state
+    )
+
+    if (pipeline_stale or secondary_needed) and not st.session_state.get("_refreshing"):
         st.session_state["_refreshing"] = True
-        st.markdown(f"""
-        <style>
-        @keyframes clouds-drift {{
-            0%   {{ transform: scale(1.1) translateX(0px); }}
-            100% {{ transform: scale(1.1) translateX(-120px); }}
-        }}
-        @keyframes sweep {{
-            0%   {{ clip-path: inset(0 100% 0 0); }}
-            60%  {{ clip-path: inset(0 0% 0 0); }}
-            85%  {{ clip-path: inset(0 0% 0 0); opacity: 1; }}
-            100% {{ clip-path: inset(0 0% 0 0); opacity: 0; }}
-        }}
-        .nv-bg {{
-            position: fixed;
-            inset: -10%;
-            background: url('data:image/jpeg;base64,{_bg_b64}') center/cover no-repeat;
-            animation: clouds-drift 20s linear infinite;
-            z-index: 0;
-        }}
-        .nv-loading-content {{
-            position: relative;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }}
-        .nv-loading-text {{
-            font-family: 'FuturaPT-Bold', sans-serif;
-            font-size: 1.4rem;
-            color: #FFFFFF;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            animation: sweep 2s ease-in-out infinite;
-            white-space: nowrap;
-            text-shadow: 0 2px 12px rgba(0,0,0,0.25);
-        }}
-        </style>
-        <div style="position:fixed;inset:0;z-index:9999;overflow:hidden;
-            display:flex;align-items:center;justify-content:center;">
-            <div class="nv-bg"></div>
-            <div class="nv-loading-content">
-            <img src="data:image/png;base64,{_logo_b64}"
-                style="width:300px;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.2))">
-            <p class="nv-loading-text" style="margin-top:8px;">Loading your dashboard...</p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        with st.spinner("Loading latest data from SharePoint..."):
-            try:
-                from concurrent.futures import ThreadPoolExecutor, as_completed
-                token = st.session_state["sp_token"]
+        token = st.session_state["sp_token"]
 
-                tasks = {
-                    "pipeline": lambda: fetch_pipeline(token),
-                    "budget":   lambda: fetch_budget(token),
-                    "capacity": lambda: fetch_capacity(token),
-                    "scope":       lambda: fetch_scope(token),
-                    "salary_dept": lambda: fetch_salary_by_dept(token),
-                }
-
-                with ThreadPoolExecutor(max_workers=4) as executor:
-                    futures = {executor.submit(fn): key for key, fn in tasks.items()}
-                    for future in as_completed(futures):
-                        key = futures[future]
-                        try:
-                            st.session_state[key] = future.result()
-                        except Exception as e:
-                            st.warning(f"{key} load failed: {e}")
-
-                st.session_state["last_refresh"] = now
-                # Auto-save weekly snapshot on sync
+        if pipeline_stale:
+            # Phase 1: pipeline only — show loading screen, then render dashboard fast
+            st.markdown(_LOADING_CSS.format(msg="Loading your dashboard..."), unsafe_allow_html=True)
+            with st.spinner(""):
                 try:
-                    if "pipeline" in st.session_state:
+                    st.session_state["pipeline"] = _cf_pipeline(token)
+                    st.session_state["last_refresh"] = now
+                    try:
                         save_pipeline_snapshot(st.session_state["pipeline"])
+                    except Exception:
+                        pass
+                except Exception as e:
+                    st.warning(f"Pipeline load failed: {e}")
+            st.session_state["_refreshing"] = False
+            st.rerun()
+
+        elif secondary_needed:
+            # Phase 2: silently load remaining sources (no full-screen overlay)
+            with st.spinner("Loading supporting data..."):
+                try:
+                    tasks = {
+                        "budget":      lambda: _cf_budget(token),
+                        "capacity":    lambda: _cf_capacity(token),
+                        "scope":       lambda: _cf_scope(token),
+                        "salary_dept": lambda: _cf_salary(token),
+                    }
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        futures = {executor.submit(fn): key for key, fn in tasks.items()}
+                        for future in as_completed(futures):
+                            key = futures[future]
+                            try:
+                                st.session_state[key] = future.result()
+                            except Exception as e:
+                                st.warning(f"{key} load failed: {e}")
                 except Exception:
                     pass
-            except Exception:
-                pass
-            finally:
-                st.session_state["_refreshing"] = False
-        st.rerun()
+            st.session_state["_refreshing"] = False
+            st.rerun()
 
 SECTION_LABELS = {
     "CONFIRMED":       "Confirmed Revenue",
@@ -260,6 +300,10 @@ with st.sidebar:
                     st.session_state.pop("sp_flow", None)
                     if "_token_cache_str" in st.session_state:
                         st.session_state["_show_token_setup"] = True
+                    # Clear data caches so fresh data is fetched
+                    _clear_data_caches()
+                    for _k in ("pipeline", "budget", "capacity", "scope", "salary_dept"):
+                        st.session_state.pop(_k, None)
                     st.session_state.pop("last_refresh", None)
                     st.rerun()
                 else:
