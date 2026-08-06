@@ -1341,7 +1341,7 @@ with tab_revenue:
             key="cmp_mode",
         )
 
-        def _render_comparison(totals_a, totals_b, col_a, col_b):
+        def _render_comparison(totals_a, totals_b, col_a, col_b, table_key="cmp_table"):
             all_clients = sorted(set(totals_a.index) | set(totals_b.index))
             cmp_rows = []
             for client in all_clients:
@@ -1387,7 +1387,13 @@ with tab_revenue:
                 raw = cmp_df.loc[cmp_df["Client"] == row["Client"], "_change_raw"]
                 cv  = raw.iloc[0] if not raw.empty else 0
                 return ["color:#27ae60;font-weight:bold" if cv > 0 else ("color:#c0392b;font-weight:bold" if cv < 0 else "") if c in ("Change (£)", "Change (%)") else "" for c in row.index]
-            st.dataframe(display_cmp.style.apply(_style_cmp, axis=1), use_container_width=True, hide_index=True)
+            sel = st.dataframe(
+                display_cmp.style.apply(_style_cmp, axis=1),
+                use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row",
+                key=table_key,
+            )
+            return cmp_df, sel
 
         # ── Period selector for Month / Quarter modes ─────────────────────────
         if cmp_mode == "Month":
@@ -1469,7 +1475,68 @@ with tab_revenue:
 
                     totals_a = _snap_totals(snap_a, rv_keys, period_months)
                     totals_b = _snap_totals(snap_b, rv_keys, period_months)
-                    _render_comparison(totals_a, totals_b, _fmt_snap(snap_a_date), _fmt_snap(snap_b_date))
+                    cmp_df, cmp_sel = _render_comparison(
+                        totals_a, totals_b,
+                        _fmt_snap(snap_a_date), _fmt_snap(snap_b_date),
+                        table_key="cmp_snap_table",
+                    )
+
+                    # ── Project drill-down ────────────────────────────────
+                    if cmp_sel and cmp_sel.get("selection", {}).get("rows"):
+                        sel_client = cmp_df.iloc[cmp_sel["selection"]["rows"][0]]["Client"]
+
+                        def _proj_totals(snap, keys, client, months):
+                            frames = [snap[k].copy() for k in keys if k in snap and isinstance(snap[k], pd.DataFrame)]
+                            if not frames:
+                                return pd.Series(dtype=float, name=client)
+                            combined = pd.concat(frames, ignore_index=True)
+                            combined = combined[combined["Client"] == client]
+                            for m in MONTHS:
+                                if m in combined.columns:
+                                    combined[m] = pd.to_numeric(combined[m], errors="coerce").fillna(0)
+                            cols = [m for m in months if m in combined.columns]
+                            if "Project" not in combined.columns or combined.empty:
+                                return pd.Series(dtype=float)
+                            return combined.groupby("Project")[cols].sum().sum(axis=1)
+
+                        proj_a = _proj_totals(snap_a, rv_keys, sel_client, period_months)
+                        proj_b = _proj_totals(snap_b, rv_keys, sel_client, period_months)
+                        all_projs = sorted(set(proj_a.index) | set(proj_b.index))
+
+                        col_a_lbl = _fmt_snap(snap_a_date)
+                        col_b_lbl = _fmt_snap(snap_b_date)
+                        proj_rows = []
+                        for proj in all_projs:
+                            va = proj_a.get(proj, 0)
+                            vb = proj_b.get(proj, 0)
+                            ch = va - vb
+                            proj_rows.append({
+                                "Project": proj,
+                                col_a_lbl: fmt_gbp(va) if va else "—",
+                                col_b_lbl: fmt_gbp(vb) if vb else "—",
+                                "Change": (("+" if ch > 0 else "") + fmt_gbp(ch)) if ch != 0 else "—",
+                                "_ch": ch,
+                                "_new": vb == 0 and va > 0,
+                                "_lost": va == 0 and vb > 0,
+                            })
+                        proj_df = pd.DataFrame(proj_rows).sort_values("_ch", ascending=False)
+
+                        def _style_proj(row):
+                            ch = proj_df.loc[proj_df["Project"] == row["Project"], "_ch"]
+                            cv = ch.iloc[0] if not ch.empty else 0
+                            return ["color:#27ae60;font-weight:bold" if cv > 0 else ("color:#c0392b;font-weight:bold" if cv < 0 else "") if c == "Change" else "" for c in row.index]
+
+                        with st.expander(f"**{sel_client}** — project breakdown", expanded=True):
+                            new_p  = proj_df[proj_df["_new"]]["Project"].tolist()
+                            lost_p = proj_df[proj_df["_lost"]]["Project"].tolist()
+                            if new_p:
+                                st.success(f"New projects: {', '.join(new_p)}")
+                            if lost_p:
+                                st.warning(f"Dropped projects: {', '.join(lost_p)}")
+                            st.dataframe(
+                                proj_df[["Project", col_a_lbl, col_b_lbl, "Change"]].style.apply(_style_proj, axis=1),
+                                use_container_width=True, hide_index=True,
+                            )
 
                 except Exception as e:
                     st.error(f"Could not load snapshots: {e}")
