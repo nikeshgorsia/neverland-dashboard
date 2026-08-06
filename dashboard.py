@@ -1902,12 +1902,8 @@ with tab_sow:
             if sel_proj:
                 proj_rows = sow_df[sow_df["Project"] == sel_proj].copy()
                 role_totals = proj_rows.groupby("Role")["Total Hours"].sum()
-                active_months = st.multiselect(
-                    "Active months for this SoW", _MS,
-                    default=schedule.get(sel_proj, {}).get("_active_months", _MS),
-                    key="sched_active_months",
-                )
-                n_active = max(len(active_months), 1)
+                active_months = _MS
+                n_active = 12
                 sched_rows = []
                 saved_proj = schedule.get(sel_proj, {})
                 for role, total_hrs in role_totals.items():
