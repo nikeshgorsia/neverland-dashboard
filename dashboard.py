@@ -1693,161 +1693,44 @@ with tab_sow:
     else:
         # ── manage loaded files ───────────────────────────────────────────────
         sources = sow_df["_source"].unique().tolist()
-        n_proj  = sow_df["Project"].nunique()
-        total_h = sow_df["Total Hours"].sum()
-        total_f = sow_df["Total Fee"].sum()
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Projects loaded", n_proj)
-        c2.metric("Total hours",     f"{total_h:,.0f}")
-        c3.metric("Total fees",      f"£{total_f:,.0f}")
-
         with st.expander(f"Manage loaded files ({len(sources)})", expanded=False):
             for src in sources:
                 ca, cb = st.columns([6, 1])
                 sub = sow_df[sow_df["_source"] == src]
-                ca.markdown(f"**{src}** — {sub['Project'].iloc[0]} | {sub['Total Hours'].sum():,.0f} hrs | £{sub['Total Fee'].sum():,.0f}")
+                ca.markdown(f"**{sub['Project'].iloc[0]}** ({src})")
                 if cb.button("Remove", key=f"rm_sow_{src}"):
                     st.session_state["sow_data"] = st.session_state["sow_data"][
                         st.session_state["sow_data"]["_source"] != src
                     ].reset_index(drop=True)
                     st.rerun()
 
-        # ── filters ───────────────────────────────────────────────────────────
-        all_projects = sorted(sow_df["Project"].unique().tolist())
-        all_depts    = sorted(d for d in sow_df["Department"].unique().tolist() if d)
-        fc1, fc2 = st.columns(2)
-        sel_proj = fc1.multiselect("Filter by project", all_projects, default=all_projects, key="sow_proj_f")
-        sel_dept = fc2.multiselect("Filter by department", all_depts, default=all_depts, key="sow_dept_f")
-        if sel_proj:
-            sow_df = sow_df[sow_df["Project"].isin(sel_proj)]
-        if sel_dept:
-            sow_df = sow_df[sow_df["Department"].isin(sel_dept)]
+        # ── department sections ───────────────────────────────────────────────
+        depts = sorted(d for d in sow_df["Department"].unique() if d)
+        for dept in depts:
+            dept_df = sow_df[sow_df["Department"] == dept]
+            dept_h = dept_df["Total Hours"].sum()
+            dept_f = dept_df["Total Fee"].sum()
 
-        # ── summary table: Department × Role totals ───────────────────────────
-        st.subheader("Hours & Fees by Department and Role")
-        summary = (
-            sow_df.groupby(["Department", "Role"], sort=False)
-            .agg(
-                Projects   = ("Project",     "nunique"),
-                Avg_Rate   = ("Hourly Rate", "mean"),
-                Hours      = ("Total Hours", "sum"),
-                Fee        = ("Total Fee",   "sum"),
+            st.markdown(
+                f"<div style='background:{NV_DARK};color:#fff;padding:8px 14px;"
+                f"border-left:4px solid {NV_PINK};border-radius:4px;margin-top:20px'>"
+                f"<b>{dept}</b> &nbsp;·&nbsp; {dept_h:,.0f} hrs &nbsp;·&nbsp; £{dept_f:,.0f}"
+                f"</div>",
+                unsafe_allow_html=True,
             )
-            .reset_index()
-            .sort_values(["Department", "Fee"], ascending=[True, False])
-        )
-        summary.rename(columns={"Avg_Rate": "Avg Rate (£/hr)"}, inplace=True)
 
-        # dept subtotals
-        dept_totals = (
-            summary.groupby("Department")
-            .agg(Projects=("Projects","sum"), Hours=("Hours","sum"), Fee=("Fee","sum"))
-            .reset_index()
-        )
-        dept_totals["Role"] = "— SUBTOTAL —"
-        dept_totals["Avg Rate (£/hr)"] = float("nan")
-        combined = pd.concat([summary, dept_totals], ignore_index=True).sort_values(
-            ["Department", "Role"], key=lambda s: s.apply(lambda v: (0 if v == "— SUBTOTAL —" else 1))
-        )
+            role_df = (
+                dept_df.groupby("Role")
+                .agg(Hours=("Total Hours", "sum"), Fee=("Total Fee", "sum"))
+                .reset_index()
+                .sort_values("Fee", ascending=False)
+            )
+            role_df["Hours"] = role_df["Hours"].apply(lambda v: f"{v:,.0f}")
+            role_df["Fee"]   = role_df["Fee"].apply(lambda v: f"£{v:,.0f}")
+            st.dataframe(role_df, use_container_width=True, hide_index=True)
 
-        def _fmt_sow(row):
-            style = []
-            for col in combined.columns:
-                if row["Role"] == "— SUBTOTAL —":
-                    style.append("font-weight:bold; background-color:#f0f0f0")
-                elif col in ("Hours", "Fee"):
-                    style.append("font-weight:600")
-                else:
-                    style.append("")
-            return style
-
-        disp = combined.copy()
-        disp["Avg Rate (£/hr)"] = disp["Avg Rate (£/hr)"].apply(lambda v: f"£{v:,.0f}" if pd.notna(v) else "")
-        disp["Hours"]           = disp["Hours"].apply(lambda v: f"{v:,.0f}")
-        disp["Fee"]             = disp["Fee"].apply(lambda v: f"£{v:,.0f}")
-        disp["Projects"]        = disp["Projects"].apply(lambda v: int(v))
-
-        st.dataframe(
-            disp.style.apply(_fmt_sow, axis=1),
-            use_container_width=True, hide_index=True,
-            column_config={
-                "Department":     st.column_config.TextColumn("Department", width="medium"),
-                "Role":           st.column_config.TextColumn("Role",       width="large"),
-                "Projects":       st.column_config.NumberColumn("# Projects", width="small"),
-                "Avg Rate (£/hr)":st.column_config.TextColumn("Avg Rate",  width="small"),
-                "Hours":          st.column_config.TextColumn("Hours",     width="small"),
-                "Fee":            st.column_config.TextColumn("Fee",       width="medium"),
-            }
-        )
-
-        # ── grand total row ───────────────────────────────────────────────────
+        # ── grand total ───────────────────────────────────────────────────────
+        st.markdown("---")
         gt_h = sow_df["Total Hours"].sum()
         gt_f = sow_df["Total Fee"].sum()
         st.markdown(f"**Grand Total — {gt_h:,.0f} hours | £{gt_f:,.0f}**")
-
-        # ── bar chart: fee by role ────────────────────────────────────────────
-        st.subheader("Total Fee by Role")
-        role_fee = (
-            sow_df.groupby("Role")["Total Fee"].sum()
-            .reset_index()
-            .sort_values("Total Fee", ascending=True)
-            .tail(20)
-        )
-        fig_fee = px.bar(
-            role_fee, x="Total Fee", y="Role", orientation="h",
-            template="plotly_white",
-            height=max(320, len(role_fee) * 34),
-            color_discrete_sequence=[NV_PINK],
-            labels={"Total Fee": "Fee (£)", "Role": ""},
-        )
-        fig_fee.update_traces(
-            text=role_fee["Total Fee"].apply(lambda v: f"£{v:,.0f}"),
-            textposition="outside",
-        )
-        fig_fee.update_layout(showlegend=False, xaxis_tickprefix="£", xaxis_tickformat=",.0f",
-                              margin=dict(l=0, r=100, t=20, b=20))
-        st.plotly_chart(fig_fee, use_container_width=True)
-
-        # ── bar chart: hours by department ────────────────────────────────────
-        if all_depts:
-            st.subheader("Hours by Department")
-            dept_hrs = (
-                sow_df.groupby("Department")["Total Hours"].sum()
-                .reset_index().sort_values("Total Hours", ascending=True)
-            )
-            fig_dept = px.bar(
-                dept_hrs, x="Total Hours", y="Department", orientation="h",
-                template="plotly_white", height=max(260, len(dept_hrs) * 40),
-                color_discrete_sequence=["#667eea"],
-                labels={"Total Hours": "Hours", "Department": ""},
-            )
-            fig_dept.update_traces(
-                text=dept_hrs["Total Hours"].apply(lambda v: f"{v:,.0f}h"),
-                textposition="outside",
-            )
-            fig_dept.update_layout(showlegend=False, margin=dict(l=0, r=80, t=20, b=20))
-            st.plotly_chart(fig_dept, use_container_width=True)
-
-        # ── per-project drilldown ─────────────────────────────────────────────
-        if len(all_projects) > 1:
-            st.subheader("Per-Project Breakdown")
-        for proj in sorted(sow_df["Project"].unique()):
-            header = proj if len(all_projects) > 1 else None
-            with st.expander(proj, expanded=(len(all_projects) == 1)):
-                pf = sow_df[sow_df["Project"] == proj].copy()
-                pf_disp = (
-                    pf.groupby(["Department", "Role"])
-                    .agg(Hours=("Total Hours","sum"), Fee=("Total Fee","sum"), Rate=("Hourly Rate","mean"))
-                    .reset_index()
-                    .sort_values(["Department", "Fee"], ascending=[True, False])
-                )
-                pf_disp["Rate"] = pf_disp["Rate"].apply(lambda v: f"£{v:,.0f}")
-                pf_disp["Hours"] = pf_disp["Hours"].apply(lambda v: f"{v:,.0f}")
-                pf_disp["Fee"]   = pf_disp["Fee"].apply(lambda v: f"£{v:,.0f}")
-                st.dataframe(pf_disp, use_container_width=True, hide_index=True,
-                             column_config={
-                                 "Rate": st.column_config.TextColumn("Rate (£/hr)"),
-                             })
-                ph = pf["Total Hours"].sum(); pf_ = pf["Total Fee"].sum()
-                st.markdown(f"**Total: {ph:,.0f} hours | £{pf_:,.0f}**")
