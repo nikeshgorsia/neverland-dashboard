@@ -246,21 +246,16 @@ with st.sidebar:
     st.divider()
 
     if SHAREPOINT_AVAILABLE:
-        if st.button("🔄 Sync from SharePoint", use_container_width=True):
+        if st.button("🔄 Sync All Data", use_container_width=True):
             try:
                 app, flow, token = get_device_flow()
                 if token:
-                    with st.spinner("Fetching pipeline..."):
-                        data = fetch_pipeline(token)
-                        st.session_state["pipeline"] = data
-                        st.session_state["sp_token"] = token
-                        st.session_state["last_refresh"] = time.time()
-                        st.session_state.pop("sp_flow", None)
-                        st.success("✅ Pipeline loaded!")
-                        # Show token cache for saving to Streamlit secrets
-                        if "_token_cache_str" in st.session_state:
-                            st.session_state["_show_token_setup"] = True
-                        st.rerun()
+                    st.session_state["sp_token"] = token
+                    st.session_state.pop("sp_flow", None)
+                    if "_token_cache_str" in st.session_state:
+                        st.session_state["_show_token_setup"] = True
+                    st.session_state.pop("last_refresh", None)
+                    st.rerun()
                 else:
                     st.session_state["sp_flow"] = (app, flow)
             except Exception as e:
@@ -276,37 +271,12 @@ with st.sidebar:
                 with st.spinner("Completing login..."):
                     try:
                         token = complete_device_flow(app, flow)
-                        data = fetch_pipeline(token)
-                        st.session_state["pipeline"] = data
                         st.session_state["sp_token"] = token
                         st.session_state.pop("sp_flow", None)
+                        st.session_state.pop("last_refresh", None)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Login failed: {e}")
-
-    if SHAREPOINT_AVAILABLE:
-        if st.button("📊 Sync Budget File", use_container_width=True):
-            token = st.session_state.get("sp_token")
-            if not token:
-                st.warning("Sync Pipeline first to authenticate.")
-            else:
-                with st.spinner("Fetching budget, capacity & scope..."):
-                    from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
-                    _tasks = {"budget": lambda: fetch_budget(token), "capacity": lambda: fetch_capacity(token), "scope": lambda: fetch_scope(token), "salary_dept": lambda: fetch_salary_by_dept(token)}
-                    _errors = []
-                    with ThreadPoolExecutor(max_workers=3) as _ex:
-                        _futs = {_ex.submit(fn): k for k, fn in _tasks.items()}
-                        for _f in _as_completed(_futs):
-                            _k = _futs[_f]
-                            try:
-                                st.session_state[_k] = _f.result()
-                            except Exception as _e:
-                                _errors.append(f"{_k}: {_e}")
-                    if _errors:
-                        st.error("\n".join(_errors))
-                    else:
-                        st.success("✅ Budget, Capacity & Scope loaded!")
-                    st.rerun()
 
 
     if "last_refresh" in st.session_state:
