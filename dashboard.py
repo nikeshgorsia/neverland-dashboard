@@ -1665,7 +1665,9 @@ with tab_sow:
         data = uploaded.read()
         ext  = name.rsplit(".", 1)[-1].lower()
         if ext in ("xlsx", "xls"):
-            df = _parse_neverland_sow(data, name) or _parse_generic_sow(data, name)
+            df = _parse_neverland_sow(data, name)
+            if df is None or df.empty:
+                df = _parse_generic_sow(data, name)
         elif ext == "csv":
             df = _parse_generic_sow(data, name)
         else:
