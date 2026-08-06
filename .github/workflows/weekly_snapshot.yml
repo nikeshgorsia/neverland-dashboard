@@ -28,4 +28,5 @@ jobs:
           BUDGET_FILE_URL: ${{ secrets.BUDGET_FILE_URL }}
           SCOPE_FILE_URL: ${{ secrets.SCOPE_FILE_URL }}
           GITHUB_TOKEN: ${{ secrets.SNAPSHOT_GITHUB_TOKEN }}
+          TOKEN_CACHE: ${{ secrets.TOKEN_CACHE }}
         run: python save_snapshot.py
