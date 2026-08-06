@@ -1812,10 +1812,23 @@ with tab_sow:
             sources = sow_df["_source"].unique().tolist()
             with st.expander(f"Manage loaded files ({len(sources)})", expanded=False):
                 for src in sources:
-                    ca, cb = st.columns([6, 1])
                     sub = sow_df[sow_df["_source"] == src]
-                    ca.markdown(f"**{sub['Project'].iloc[0]}** ({src})")
-                    if cb.button("Remove", key=f"rm_sow_{src}"):
+                    cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
+                    cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
+                    st.markdown(f"<small style='color:grey'>{src}</small>", unsafe_allow_html=True)
+                    c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
+                    new_proj   = c1.text_input("Project name", value=cur_proj,   key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name")
+                    new_client = c2.text_input("Client",       value=cur_client, key=f"client_{src}",    label_visibility="collapsed", placeholder="Client")
+                    if c3.button("Save", key=f"rename_sow_{src}"):
+                        mask = st.session_state["sow_data"]["_source"] == src
+                        st.session_state["sow_data"].loc[mask, "Project"] = new_proj
+                        st.session_state["sow_data"].loc[mask, "Client"]  = new_client
+                        try:
+                            save_sow_data(st.session_state["sow_data"])
+                        except Exception:
+                            pass
+                        st.rerun()
+                    if c4.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
                             st.session_state["sow_data"]["_source"] != src
                         ].reset_index(drop=True)
@@ -1824,6 +1837,7 @@ with tab_sow:
                         except Exception:
                             pass
                         st.rerun()
+                    st.markdown("---")
 
             @st.dialog("Role Breakdown by Client", width="large")
             def _show_role_breakdown(role_name, dept_name):
