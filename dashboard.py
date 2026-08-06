@@ -210,6 +210,12 @@ if SHAREPOINT_AVAILABLE and "sp_token" in st.session_state:
                             st.warning(f"{key} load failed: {e}")
 
                 st.session_state["last_refresh"] = now
+                # Auto-save weekly snapshot on sync
+                try:
+                    if "pipeline" in st.session_state:
+                        save_pipeline_snapshot(st.session_state["pipeline"])
+                except Exception:
+                    pass
             except Exception:
                 pass
             finally:
@@ -284,13 +290,6 @@ with st.sidebar:
         ts = datetime.datetime.fromtimestamp(st.session_state["last_refresh"]).strftime("%H:%M:%S")
         st.caption(f"Last updated: {ts}")
 
-    if SHAREPOINT_AVAILABLE and "pipeline" in st.session_state:
-        if st.button("📸 Save Weekly Snapshot", use_container_width=True):
-            try:
-                date_str = save_pipeline_snapshot(st.session_state["pipeline"])
-                st.success(f"✅ Snapshot saved: {date_str}")
-            except Exception as e:
-                st.error(f"Snapshot failed: {e}")
 
     # One-time token setup helper
     if st.session_state.get("_show_token_setup") and "_token_cache_str" in st.session_state:
