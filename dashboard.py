@@ -1859,7 +1859,7 @@ with tab_sow:
                     if _role == "_active_months":
                         continue
                     _role_scheduled[_role] = _role_scheduled.get(_role, 0.0) + sum(
-                        float(_months.get(m, 0)) for m in _MS_ALL
+                        float(_months.get(m) or 0) for m in _MS_ALL
                     )
 
             # ── department sections ───────────────────────────────────────────
@@ -1933,7 +1933,7 @@ with tab_sow:
                     row = {"Role": role}
                     if role in saved_proj and any(m in saved_proj[role] for m in _MS):
                         for m in _MS:
-                            row[m] = saved_proj[role].get(m, 0.0)
+                            row[m] = float(saved_proj[role].get(m) or 0.0)
                     else:
                         per_month = round(total_hrs / n_active, 1)
                         for m in _MS:
