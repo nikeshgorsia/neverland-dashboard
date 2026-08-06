@@ -1844,6 +1844,24 @@ with tab_sow:
                 st.dataframe(breakdown, use_container_width=True, hide_index=True)
                 st.markdown(f"**Total — {total_h:,.0f} hrs · £{total_f:,.0f}**")
 
+            # ── build per-role scheduled hours from monthly schedule ─────────
+            _schedule = st.session_state.get("sow_schedule", {})
+            if not _schedule:
+                try:
+                    _schedule = load_sow_schedule()
+                    st.session_state["sow_schedule"] = _schedule
+                except Exception:
+                    _schedule = {}
+            _MS_ALL = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _role_scheduled: dict = {}
+            for _proj, _proj_sched in _schedule.items():
+                for _role, _months in _proj_sched.items():
+                    if _role == "_active_months":
+                        continue
+                    _role_scheduled[_role] = _role_scheduled.get(_role, 0.0) + sum(
+                        float(_months.get(m, 0)) for m in _MS_ALL
+                    )
+
             # ── department sections ───────────────────────────────────────────
             depts = sorted(d for d in sow_df["Department"].unique() if d)
             for dept in depts:
@@ -1866,6 +1884,11 @@ with tab_sow:
                     .sort_values("Fee", ascending=False)
                 )
                 display_role = role_df_raw.copy()
+                display_role.insert(
+                    display_role.columns.get_loc("Fee"),
+                    "Hours Scheduled",
+                    display_role["Role"].map(lambda r: f"{_role_scheduled.get(r, 0):,.0f}"),
+                )
                 display_role["Hours Scoped"] = display_role["Hours Scoped"].apply(lambda v: f"{v:,.0f}")
                 display_role["Fee"]   = display_role["Fee"].apply(lambda v: f"£{v:,.0f}")
                 st.caption("Click a row to see the client breakdown.")
