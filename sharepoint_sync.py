@@ -849,6 +849,45 @@ def load_pipeline_snapshot(date_str: str) -> dict:
     return result
 
 
+def save_sow_data(df: pd.DataFrame) -> None:
+    """Persist all SoW rows to GitHub as sow_data/sow_data.json."""
+    import json, base64
+    content_str = json.dumps(df.to_dict(orient="records"), indent=2)
+    encoded = base64.b64encode(content_str.encode()).decode()
+    filename = "sow_data/sow_data.json"
+    hdrs = _github_headers()
+    check = _session.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, timeout=10,
+    )
+    sha = check.json().get("sha") if check.status_code == 200 else None
+    payload = {"message": "Update SoW data", "content": encoded, "branch": "main"}
+    if sha:
+        payload["sha"] = sha
+    resp = _session.put(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/{filename}",
+        headers=hdrs, json=payload, timeout=15,
+    )
+    if resp.status_code not in (200, 201):
+        raise ValueError(f"Failed to save SoW data: {resp.text[:300]}")
+
+
+def load_sow_data() -> pd.DataFrame:
+    """Load persisted SoW rows from GitHub. Returns empty DataFrame if none saved."""
+    import json, base64
+    hdrs = _github_headers()
+    resp = _session.get(
+        f"https://api.github.com/repos/{GITHUB_REPO}/contents/sow_data/sow_data.json",
+        headers=hdrs, timeout=10,
+    )
+    if resp.status_code == 404:
+        return pd.DataFrame()
+    if resp.status_code != 200:
+        raise ValueError(f"Failed to load SoW data: {resp.text[:200]}")
+    records = json.loads(base64.b64decode(resp.json()["content"]).decode())
+    return pd.DataFrame(records)
+
+
 def fetch_budget(token: str) -> dict:
     _load_globals()
     """

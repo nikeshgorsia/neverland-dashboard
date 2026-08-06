@@ -112,7 +112,7 @@ st.markdown(f"""
 import time
 
 try:
-    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept, save_pipeline_snapshot, list_pipeline_snapshots, load_pipeline_snapshot
+    from sharepoint_sync import get_device_flow, complete_device_flow, fetch_pipeline, fetch_raw, fetch_client_projects, fetch_budget, fetch_capacity, fetch_scope_debug, fetch_scope, fetch_scope_structure_debug, fetch_salary_by_dept, save_pipeline_snapshot, list_pipeline_snapshots, load_pipeline_snapshot, save_sow_data, load_sow_data
     SHAREPOINT_AVAILABLE = True
 except ImportError:
     SHAREPOINT_AVAILABLE = False
@@ -1653,10 +1653,14 @@ with tab_sow:
             return None, name
         return df, None
 
-    # ── session state ─────────────────────────────────────────────────────────
+    # ── session state — load from GitHub on first visit ───────────────────────
     SOW_COLS = ["Project","Client","Department","Role","Hourly Rate","Total Hours","Total Fee","_source"]
     if "sow_data" not in st.session_state:
-        st.session_state["sow_data"] = pd.DataFrame(columns=SOW_COLS)
+        try:
+            _persisted = load_sow_data()
+            st.session_state["sow_data"] = _persisted if not _persisted.empty else pd.DataFrame(columns=SOW_COLS)
+        except Exception:
+            st.session_state["sow_data"] = pd.DataFrame(columns=SOW_COLS)
 
     # ── file uploader ─────────────────────────────────────────────────────────
     uploaded_files = st.file_uploader(
@@ -1667,6 +1671,7 @@ with tab_sow:
     )
 
     if uploaded_files:
+        added = False
         for uf in uploaded_files:
             if uf.name in st.session_state["sow_data"]["_source"].values:
                 continue
@@ -1682,6 +1687,12 @@ with tab_sow:
                 hrs = df_parsed["Total Hours"].sum()
                 fee = df_parsed["Total Fee"].sum()
                 st.success(f"Loaded **{uf.name}** — {n} roles, {hrs:,.0f} hours, £{fee:,.0f} total fee")
+                added = True
+        if added:
+            try:
+                save_sow_data(st.session_state["sow_data"])
+            except Exception as _e:
+                st.warning(f"Could not save SoW data: {_e}")
 
     sow_df = st.session_state["sow_data"].copy()
     # ensure numeric
@@ -1702,6 +1713,10 @@ with tab_sow:
                     st.session_state["sow_data"] = st.session_state["sow_data"][
                         st.session_state["sow_data"]["_source"] != src
                     ].reset_index(drop=True)
+                    try:
+                        save_sow_data(st.session_state["sow_data"])
+                    except Exception:
+                        pass
                     st.rerun()
 
         # ── department sections ───────────────────────────────────────────────
