@@ -409,7 +409,8 @@ with st.sidebar:
 
         try:
             import anthropic as _anthropic
-            _client = _anthropic.Anthropic(api_key=st.secrets.get("ANTHROPIC_API_KEY", ""))
+            _api_key = str(st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
+            _client = _anthropic.Anthropic(api_key=_api_key)
             _history = [
                 {"role": m["role"], "content": m["content"]}
                 for m in st.session_state["chat_messages"][:-1]  # exclude latest user msg already added
