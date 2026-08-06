@@ -1815,9 +1815,8 @@ with tab_sow:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
-                    st.markdown(f"<small style='color:grey'>{src}</small>", unsafe_allow_html=True)
                     c1, c2, c3, c4 = st.columns([3, 3, 1, 1])
-                    new_proj   = c1.text_input("Project name", value=cur_proj,   key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name")
+                    new_proj   = c1.text_input("Project name", value=cur_proj,   key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
                     new_client = c2.text_input("Client",       value=cur_client, key=f"client_{src}",    label_visibility="collapsed", placeholder="Client")
                     if c3.button("Save", key=f"rename_sow_{src}"):
                         mask = st.session_state["sow_data"]["_source"] == src
@@ -1837,7 +1836,6 @@ with tab_sow:
                         except Exception:
                             pass
                         st.rerun()
-                    st.markdown("---")
 
             @st.dialog("Role Breakdown by Client", width="large")
             def _show_role_breakdown(role_name, dept_name):
