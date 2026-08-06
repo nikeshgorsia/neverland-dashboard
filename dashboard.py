@@ -385,7 +385,7 @@ def _clean_val(v):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 st.markdown(f"<h1 style='color:{NV_DARK}'>Neverland Dashboard</h1>", unsafe_allow_html=True)
-tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope, tab_revenue = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout", "Revenue Tracker"])
+tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope, tab_revenue, tab_sow = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout", "Revenue Tracker", "Capacity Planning"])
 
 CATEGORY_COLORS = {
     "Confirmed Revenue": "#E0EAF6",
@@ -1483,3 +1483,254 @@ with tab_revenue:
                             st.error(f"Could not load project breakdown: {e}")
                 else:
                     st.info("Authenticate via SharePoint to see project-level breakdown.")
+
+# ── Capacity Planning tab ─────────────────────────────────────────────────────
+with tab_sow:
+    st.subheader("Capacity Planning")
+    st.caption("Upload Scope of Work files (Excel, CSV, or PDF) to see hours by role per project.")
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+    def _normalise_col(col: str) -> str:
+        return col.strip().lower().replace(" ", "_").replace("-", "_")
+
+    ROLE_ALIASES    = {"role", "job_title", "job_role", "position", "resource", "resource_type", "function", "discipline"}
+    HOURS_ALIASES   = {"hours", "total_hours", "estimated_hours", "hrs", "days", "planned_hours", "allocated_hours"}
+    PROJECT_ALIASES = {"project", "project_name", "client_project", "scope", "work", "engagement"}
+
+    def _find_col(df_cols, aliases):
+        normed = {_normalise_col(c): c for c in df_cols}
+        for alias in aliases:
+            if alias in normed:
+                return normed[alias]
+        return None
+
+    def _parse_excel_sow(file_bytes: bytes, filename: str) -> pd.DataFrame | None:
+        """Try to extract role/hours/project rows from an Excel or CSV file."""
+        import io
+        try:
+            if filename.lower().endswith(".csv"):
+                df = pd.read_csv(io.BytesIO(file_bytes))
+            else:
+                # Try each sheet; use first that has role + hours columns
+                xf = pd.ExcelFile(io.BytesIO(file_bytes))
+                df = None
+                for sheet in xf.sheet_names:
+                    candidate = xf.parse(sheet)
+                    if _find_col(candidate.columns, ROLE_ALIASES) and _find_col(candidate.columns, HOURS_ALIASES):
+                        df = candidate
+                        break
+                if df is None:
+                    # Fallback: just use the first sheet
+                    df = xf.parse(xf.sheet_names[0])
+        except Exception as e:
+            return None
+
+        role_col    = _find_col(df.columns, ROLE_ALIASES)
+        hours_col   = _find_col(df.columns, HOURS_ALIASES)
+        project_col = _find_col(df.columns, PROJECT_ALIASES)
+
+        if role_col is None or hours_col is None:
+            return None
+
+        rows = df[[c for c in [project_col, role_col, hours_col] if c]].copy()
+        rows.columns = (["Project", "Role", "Hours"] if project_col
+                        else ["Role", "Hours"])
+        if "Project" not in rows.columns:
+            # Infer project name from filename
+            rows.insert(0, "Project", filename.rsplit(".", 1)[0])
+        rows["Hours"] = pd.to_numeric(rows["Hours"], errors="coerce").fillna(0)
+        rows = rows[rows["Hours"] > 0].dropna(subset=["Role"])
+        rows["Role"] = rows["Role"].astype(str).str.strip()
+        return rows[["Project", "Role", "Hours"]]
+
+    def _parse_pdf_sow(file_bytes: bytes, filename: str) -> pd.DataFrame | None:
+        """Extract hours table from a PDF SoW using PyMuPDF."""
+        import io, re
+        try:
+            import fitz  # PyMuPDF
+        except ImportError:
+            return None
+        try:
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+        except Exception:
+            return None
+
+        all_rows = []
+        project_name = filename.rsplit(".", 1)[0]
+
+        for page in doc:
+            # Try structured table extraction first
+            try:
+                tabs = page.find_tables()
+                for tab in tabs.tables:
+                    raw = tab.extract()
+                    if not raw or len(raw) < 2:
+                        continue
+                    header = [str(h).strip() if h else "" for h in raw[0]]
+                    role_idx    = next((i for i, h in enumerate(header) if _normalise_col(h) in ROLE_ALIASES), None)
+                    hours_idx   = next((i for i, h in enumerate(header) if _normalise_col(h) in HOURS_ALIASES), None)
+                    project_idx = next((i for i, h in enumerate(header) if _normalise_col(h) in PROJECT_ALIASES), None)
+                    if role_idx is None or hours_idx is None:
+                        continue
+                    for row in raw[1:]:
+                        if len(row) <= max(role_idx, hours_idx):
+                            continue
+                        role  = str(row[role_idx]).strip() if row[role_idx] else ""
+                        hrs   = str(row[hours_idx]).strip() if row[hours_idx] else "0"
+                        proj  = str(row[project_idx]).strip() if project_idx is not None and row[project_idx] else project_name
+                        try:
+                            hrs_val = float(re.sub(r"[^\d.]", "", hrs))
+                        except ValueError:
+                            continue
+                        if role and hrs_val > 0:
+                            all_rows.append({"Project": proj, "Role": role, "Hours": hrs_val})
+            except Exception:
+                pass
+
+            if not all_rows:
+                # Fallback: scan plain text for "Role: X  Hours: Y" patterns
+                text = page.get_text()
+                for match in re.finditer(
+                    r"([A-Za-z][A-Za-z &/\-]+?)\s{2,}(\d+(?:\.\d+)?)\s*(?:hrs?|hours?|days?)",
+                    text, re.IGNORECASE
+                ):
+                    all_rows.append({
+                        "Project": project_name,
+                        "Role": match.group(1).strip(),
+                        "Hours": float(match.group(2)),
+                    })
+
+        doc.close()
+        if not all_rows:
+            return None
+        return pd.DataFrame(all_rows)[["Project", "Role", "Hours"]]
+
+    def _parse_uploaded_file(uploaded) -> tuple[pd.DataFrame | None, str]:
+        name = uploaded.name
+        data = uploaded.read()
+        ext  = name.rsplit(".", 1)[-1].lower()
+        if ext in ("xlsx", "xls", "csv"):
+            df = _parse_excel_sow(data, name)
+        elif ext == "pdf":
+            df = _parse_pdf_sow(data, name)
+        else:
+            df = None
+        if df is None or df.empty:
+            return None, f"Could not extract role/hours data from **{name}**. Check the column headings include 'Role' and 'Hours'."
+        return df, ""
+
+    # ── session state for SOW data ────────────────────────────────────────────
+    if "sow_data" not in st.session_state:
+        st.session_state["sow_data"] = pd.DataFrame(columns=["Project", "Role", "Hours", "_source"])
+
+    # ── file uploader ─────────────────────────────────────────────────────────
+    uploaded_files = st.file_uploader(
+        "Upload Scope of Work files",
+        type=["xlsx", "xls", "csv", "pdf"],
+        accept_multiple_files=True,
+        help="Supported formats: Excel (.xlsx/.xls), CSV, PDF. Files should have columns for Role and Hours (and optionally Project).",
+    )
+
+    if uploaded_files:
+        for uf in uploaded_files:
+            already_loaded = uf.name in st.session_state["sow_data"]["_source"].values
+            if already_loaded:
+                continue
+            df_parsed, err = _parse_uploaded_file(uf)
+            if err:
+                st.warning(err)
+            else:
+                df_parsed["_source"] = uf.name
+                st.session_state["sow_data"] = pd.concat(
+                    [st.session_state["sow_data"], df_parsed], ignore_index=True
+                )
+                st.success(f"Loaded **{uf.name}** — {len(df_parsed)} rows")
+
+    sow_df = st.session_state["sow_data"].copy()
+
+    if sow_df.empty:
+        st.info("No data yet. Upload a Scope of Work file above to get started.")
+        st.markdown("""
+**Expected file format (Excel or CSV):**
+
+| Role | Hours | Project *(optional)* |
+|------|-------|----------------------|
+| Creative Director | 40 | Brand Campaign |
+| Designer | 80 | Brand Campaign |
+| Account Manager | 20 | Brand Campaign |
+
+Column names can vary (e.g. "Resource", "Hrs", "Estimated Hours") — the dashboard will auto-detect them.
+""")
+    else:
+        # ── loaded files list with delete ─────────────────────────────────────
+        sources = sow_df["_source"].unique().tolist()
+        st.markdown(f"**{len(sources)} file(s) loaded** — {len(sow_df)} role entries across {sow_df['Project'].nunique()} project(s)")
+
+        with st.expander("Manage loaded files", expanded=False):
+            for src in sources:
+                col_a, col_b = st.columns([6, 1])
+                n_rows = len(sow_df[sow_df["_source"] == src])
+                col_a.markdown(f"📄 **{src}** — {n_rows} rows")
+                if col_b.button("Remove", key=f"rm_sow_{src}"):
+                    st.session_state["sow_data"] = st.session_state["sow_data"][
+                        st.session_state["sow_data"]["_source"] != src
+                    ].reset_index(drop=True)
+                    st.rerun()
+
+        # ── project filter ────────────────────────────────────────────────────
+        all_projects = sorted(sow_df["Project"].unique().tolist())
+        sel_projects = st.multiselect("Filter by project", all_projects, default=all_projects, key="sow_proj_filter")
+        if sel_projects:
+            sow_df = sow_df[sow_df["Project"].isin(sel_projects)]
+
+        # ── aggregate: Role × Project ─────────────────────────────────────────
+        pivot = (
+            sow_df.groupby(["Role", "Project"])["Hours"]
+            .sum()
+            .reset_index()
+            .pivot(index="Role", columns="Project", values="Hours")
+            .fillna(0)
+        )
+        pivot["Total Hours"] = pivot.sum(axis=1)
+        pivot = pivot.sort_values("Total Hours", ascending=False)
+
+        # Totals row
+        totals = pivot.sum(axis=0).rename("TOTAL")
+        pivot_display = pd.concat([pivot, totals.to_frame().T])
+
+        def _style_sow(df):
+            styles = pd.DataFrame("", index=df.index, columns=df.columns)
+            styles.loc["TOTAL", :] = "font-weight:bold; background-color:#f5f5f5"
+            styles["Total Hours"] = "font-weight:bold"
+            return styles
+
+        st.subheader("Hours by Role × Project")
+        st.dataframe(
+            pivot_display.style.apply(_style_sow, axis=None).format("{:.0f}"),
+            use_container_width=True,
+        )
+
+        # ── bar chart: total hours by role ────────────────────────────────────
+        role_totals = pivot[["Total Hours"]].reset_index().sort_values("Total Hours", ascending=True)
+        fig_sow = px.bar(
+            role_totals, x="Total Hours", y="Role", orientation="h",
+            template="plotly_white", height=max(300, len(role_totals) * 36),
+            labels={"Total Hours": "Hours", "Role": ""},
+            color_discrete_sequence=[NV_PINK],
+        )
+        fig_sow.update_traces(text=role_totals["Total Hours"].apply(lambda h: f"{h:.0f}h"), textposition="outside")
+        fig_sow.update_layout(showlegend=False, margin=dict(l=0, r=60, t=20, b=20))
+        st.subheader("Total Hours by Role")
+        st.plotly_chart(fig_sow, use_container_width=True)
+
+        # ── per-project breakdown ─────────────────────────────────────────────
+        if len(all_projects) > 1:
+            st.subheader("Per-Project Breakdown")
+            for proj in sorted(sow_df["Project"].unique()):
+                with st.expander(proj, expanded=False):
+                    proj_df = sow_df[sow_df["Project"] == proj].groupby("Role")["Hours"].sum().reset_index()
+                    proj_df = proj_df.sort_values("Hours", ascending=False)
+                    total_h = proj_df["Hours"].sum()
+                    proj_df["Hours"] = proj_df["Hours"].apply(lambda h: f"{h:.0f}h")
+                    st.dataframe(proj_df, use_container_width=True, hide_index=True)
+                    st.markdown(f"**Total: {total_h:.0f} hours**")
