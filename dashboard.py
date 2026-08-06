@@ -1681,6 +1681,10 @@ with tab_sow:
             # Roles with "Strategy" in their title belong in Strategy, not Client Service
             if dept == "Client Service" and "strategy" in role_str.lower():
                 dept = "Strategy"
+            # CEO and CCPO always go under Management
+            _MANAGEMENT_ROLES = {"ceo", "ccpo", "chief executive", "chief client"}
+            if any(kw in role_str.lower() for kw in _MANAGEMENT_ROLES):
+                dept = "Management"
             rows_out.append({
                 "Project":      project_name,
                 "Client":       client_name,
