@@ -2134,14 +2134,15 @@ with tab_sow:
                     st.write("")
                     st.write("")
                     _bf_apply = st.button("Apply", key=f"bf_apply_{sel_proj}")
-                if _bf_apply and _bf_roles and _bf_months and _bf_val:
+                _effective_roles = _bf_roles or _dept_roles
+                if _bf_apply and _effective_roles and _bf_months and _bf_val.strip():
                     _raw = _bf_val.strip()
                     _is_pct_fill = _raw.endswith("%")
                     _num = float(_raw.rstrip("%"))
                     for _idx, _row in sched_df.iterrows():
                         if _row.get("_is_sub") or _row.get("_is_grand"):
                             continue
-                        if _row["Role"] not in _bf_roles:
+                        if _row["Role"] not in _effective_roles:
                             continue
                         _sow = float(_row["SoW Total"] or 0)
                         _fill_val = round(_num / 100 * _sow, 1) if _is_pct_fill else _num
