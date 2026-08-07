@@ -383,13 +383,15 @@ def _sow_split_dialog(proj_name, total_hours, source_name):
             proj_sched[role] = {m: round(hrs * pcts[m] / 100, 1) for m in _MS_D}
         schedule[proj_name] = proj_sched
         st.session_state["sow_schedule"] = schedule
+        st.session_state.pop("_pending_split", None)
         try:
             from sharepoint_sync import save_sow_schedule
             save_sow_schedule(schedule)
         except Exception:
             pass
         st.rerun()
-    if c2.button("Skip — use even split"):
+    if c2.button("Skip"):
+        st.session_state.pop("_pending_split", None)
         st.rerun()
 
 
@@ -2026,7 +2028,7 @@ with tab_sow:
                 st.warning(f"Could not save SoW data: {_e}")
 
     if "_pending_split" in st.session_state:
-        _ps = st.session_state.pop("_pending_split")
+        _ps = st.session_state["_pending_split"]  # keep key so reruns re-trigger dialog
         _sow_split_dialog(_ps["proj"], _ps["hrs"], _ps["src"])
 
     sow_df = st.session_state["sow_data"].copy()
