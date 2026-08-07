@@ -2502,6 +2502,7 @@ with tab_sow:
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
+                gb.configure_column("_is_grand_fee", hide=True)
                 gb.configure_column("_dept", hide=True)
                 gb.configure_grid_options(
                     rowHeight=35,
@@ -2535,6 +2536,9 @@ with tab_sow:
                         ".ag-header-cell[col-id='_gap']": {
                             "border": "none !important",
                             "background-color": "#ffffff !important",
+                        },
+                        ".ag-header-cell-text": {
+                            "font-size": "10px !important",
                         },
                     }
                 )
