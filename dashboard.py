@@ -2192,7 +2192,7 @@ with tab_sow:
 
     if sow_view == "Monthly Schedule":
         # ── Monthly Schedule ──────────────────────────────────────────────────
-        st.caption("Hours are spread evenly across active months by default. Edit any cell to override.")
+        st.caption("Edit cells to schedule hours across months.")
         pct_mode = st.selectbox("📊 Display hours as", ["Hours", "% of SoW Total"], key="sched_display_mode_v2", index=0)
         if sow_df.empty:
             st.info("No data yet. Upload a Scope of Work file in the Summary view first.")
@@ -2227,11 +2227,8 @@ with tab_sow:
                         for m in _MS:
                             row[m] = float(saved_proj[role].get(m) or 0.0)
                     else:
-                        per_month = round(total_hrs / n_active, 1)
                         for m in _MS:
-                            row[m] = per_month
-                        drift = round(total_hrs - sum(row[m] for m in _MS), 1)
-                        row[_MS[0]] = round(row[_MS[0]] + drift, 1)
+                            row[m] = 0.0
                     row["SoW Total"] = round(total_hrs, 1)
                     row["SoW Total (£)"] = round(float(role_fee_totals.get(role, 0)), 0)
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
