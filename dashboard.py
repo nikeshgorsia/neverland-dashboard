@@ -1620,6 +1620,88 @@ with tab_sow:
     sow_view = st.radio("View", ["Summary", "Monthly Schedule"], horizontal=True, key="sow_view_radio", label_visibility="collapsed")
     st.markdown("---")
 
+    # ── Fee Breakdown sheet parser (CP x NVL format) ─────────────────────────
+    def _parse_fee_breakdown_sheet(xf, sheet_name: str, project_name: str, client_name: str):
+        """
+        Parses 'New Fee Breakdown' / 'Fee Breakdown' sheets used in CP x NVL files.
+        Layout: headers in the row where col A contains 'Department' or 'Job Title'.
+        Col A = dept/role name, Col B = person name (non-empty → role row),
+        Col C = hourly rate, Col N (index 13) = total hours, Col R (index 17) = total fee.
+        Department header rows have empty col B. Skip rows where col A starts with 'TOTAL'.
+        """
+        import re
+        try:
+            ws = xf.parse(sheet_name, header=None)
+        except Exception:
+            return None
+
+        # Find header row
+        header_row_idx = None
+        for i, row in ws.iterrows():
+            a_val = str(row.iloc[0]).strip().lower() if len(row) > 0 else ""
+            if "department" in a_val or "job title" in a_val:
+                header_row_idx = i
+                break
+        if header_row_idx is None:
+            return None
+
+        DEPT_COL, NAME_COL, RATE_COL, HRS_COL, FEE_COL = 0, 1, 2, 13, 17
+
+        _KNOWN_DEPTS = {"management", "client service", "strategy", "creative", "production", "account"}
+        _DEPT_RENAME = {"account": "Client Service"}
+
+        rows_out = []
+        current_dept = ""
+        for i, row in ws.iterrows():
+            if i <= header_row_idx:
+                continue
+            a_val = str(row.iloc[DEPT_COL]).strip() if len(row) > DEPT_COL and row.iloc[DEPT_COL] is not None else ""
+            b_val = str(row.iloc[NAME_COL]).strip() if len(row) > NAME_COL and row.iloc[NAME_COL] is not None else ""
+            if a_val in ("nan", "None", ""):
+                continue
+            # Skip TOTAL rows
+            if a_val.upper().startswith("TOTAL"):
+                continue
+            # Detect department header: no name in col B, or col A is a known dept
+            b_clean = b_val if b_val not in ("nan", "None") else ""
+            a_lower = a_val.lower()
+            if not b_clean or any(a_lower == d for d in _KNOWN_DEPTS):
+                current_dept = _DEPT_RENAME.get(a_lower, a_val)
+                continue
+            # Role row
+            try:
+                rate = float(row.iloc[RATE_COL]) if len(row) > RATE_COL else 0.0
+            except (TypeError, ValueError):
+                rate = 0.0
+            try:
+                hrs = float(row.iloc[HRS_COL]) if len(row) > HRS_COL else 0.0
+            except (TypeError, ValueError):
+                hrs = 0.0
+            try:
+                fee = float(row.iloc[FEE_COL]) if len(row) > FEE_COL else 0.0
+            except (TypeError, ValueError):
+                fee = 0.0
+            if hrs <= 0:
+                continue
+            dept = current_dept
+            if dept == "Client Service" and "strategy" in a_val.lower():
+                dept = "Strategy"
+            if a_val.strip().lower() in {"ceo", "ccpo"}:
+                dept = "Management"
+            rows_out.append({
+                "Project":     project_name,
+                "Client":      client_name,
+                "Department":  dept,
+                "Role":        a_val,
+                "Hourly Rate": rate,
+                "Total Hours": hrs,
+                "Total Fee":   fee,
+            })
+
+        if not rows_out:
+            return None
+        return pd.DataFrame(rows_out)
+
     # ── Neverland SoW template parser ────────────────────────────────────────
     def _parse_neverland_sow(file_bytes: bytes, filename: str):
         """
@@ -1651,7 +1733,14 @@ with tab_sow:
             except Exception:
                 pass
 
-        # ── parse Staffing Fee Template sheet ────────────────────────────
+        # ── detect sheet: Staffing Fee Template OR New/Fee Breakdown ─────
+        _FEE_BREAKDOWN_NAMES = ["New Fee Breakdown", "Fee Breakdown"]
+        _fee_breakdown_sheet = next(
+            (s for s in _FEE_BREAKDOWN_NAMES if s in xf.sheet_names), None
+        )
+        if _fee_breakdown_sheet:
+            return _parse_fee_breakdown_sheet(xf, _fee_breakdown_sheet, project_name, client_name)
+
         if "Staffing Fee Template" not in xf.sheet_names:
             return None
         try:
