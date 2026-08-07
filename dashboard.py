@@ -2091,9 +2091,10 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand"]
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand", "_rate"]
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
+                sched_df["_rate"] = sched_df["_rate"].fillna(0)
 
                 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
                 gb = GridOptionsBuilder.from_dataframe(sched_df)
@@ -2105,7 +2106,15 @@ with tab_sow:
                 gb.configure_column("Role", minWidth=160)
                 gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90,
                     editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"))
-                gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})", minWidth=90, maxWidth=110)
+                gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], minWidth=90, maxWidth=110,
+                    valueGetter=JsCode("""function(p){
+                        if(!p.data) return 0;
+                        var rate = p.data['_rate'] || 0;
+                        return rate > 0
+                            ? Math.round(p.data['SoW Total'] * rate)
+                            : (p.data['SoW Total (£)'] || 0);
+                    }"""),
+                    valueFormatter="'£' + x.toLocaleString('en-GB', {maximumFractionDigits:0})")
                 gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=85, maxWidth=105,
                     cellStyle=JsCode("""function(p){
                         if(p.data['_is_sub']) return {fontWeight:'700'};
@@ -2119,6 +2128,7 @@ with tab_sow:
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_rate", hide=True)
+                gb.configure_column("SoW Total (£)", hide=False)
                 gb.configure_grid_options(
                     rowHeight=35,
                     suppressMovableColumns=True,
