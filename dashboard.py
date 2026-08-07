@@ -2095,6 +2095,14 @@ with tab_sow:
                 )
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
 
+                over = edited_df[edited_df["Scheduled"] > edited_df["SoW Total"]]
+                if not over.empty:
+                    msgs = ", ".join(
+                        f"**{r['Role']}** ({r['Scheduled']}h scheduled vs {r['SoW Total']}h scoped)"
+                        for _, r in over.iterrows()
+                    )
+                    st.error(f"⚠️ Over-scheduled: {msgs}")
+
                 # Auto-save whenever values differ from what's persisted
                 new_proj_schedule = {"_active_months": active_months}
                 for _, row in edited_df.iterrows():
