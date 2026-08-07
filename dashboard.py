@@ -1917,6 +1917,7 @@ with tab_sow:
                 _job_numbers = st.session_state["sow_schedule"].get("_job_numbers", {})
 
                 st.caption("Project name · Client · Job number(s)")
+                _jobs_changed = False
                 for src in sources:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
@@ -1928,7 +1929,7 @@ with tab_sow:
                     _client_idx  = _client_opts.index(cur_client) if cur_client in _client_opts else 0
                     new_client = c2.selectbox("Client", options=_client_opts, index=_client_idx, key=f"client_{src}", label_visibility="collapsed")
                     new_jobs = c3.text_input("Job numbers", value=cur_jobs, key=f"jobs_{src}", label_visibility="collapsed", placeholder="e.g. JOB001, JOB002")
-                    # Auto-save on any change
+                    # Auto-save project/client on change
                     if new_proj != cur_proj or new_client != cur_client:
                         mask = st.session_state["sow_data"]["_source"] == src
                         st.session_state["sow_data"].loc[mask, "Project"] = new_proj
@@ -1939,8 +1940,7 @@ with tab_sow:
                             pass
                     if new_jobs != cur_jobs:
                         _job_numbers[new_proj] = new_jobs
-                        st.session_state["sow_schedule"]["_job_numbers"] = _job_numbers
-                        save_sow_schedule(st.session_state["sow_schedule"])
+                        _jobs_changed = True
                     if c4.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
                             st.session_state["sow_data"]["_source"] != src
@@ -1950,6 +1950,9 @@ with tab_sow:
                         except Exception:
                             pass
                         st.rerun()
+                if _jobs_changed:
+                    st.session_state["sow_schedule"]["_job_numbers"] = _job_numbers
+                    save_sow_schedule(st.session_state["sow_schedule"])
 
             @st.dialog("Role Breakdown by Client", width="large")
             def _show_role_breakdown(role_name, dept_name):
