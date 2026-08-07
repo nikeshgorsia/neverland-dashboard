@@ -2107,7 +2107,8 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
+                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
+                sched_df["Sched %"] = 0.0
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
@@ -2234,6 +2235,36 @@ with tab_sow:
                         return sched > (p.data['SoW Total']||0)
                             ? {color:'#dc2626', fontWeight:'700'} : {};
                     }"""))
+                gb.configure_column("Sched %", header_name="Sched %", type=["numericColumn"],
+                    minWidth=75, maxWidth=90, editable=False,
+                    valueGetter=JsCode("""function(p){
+                        if(!p.data) return 0;
+                        var MS=""" + str(_MS) + """;
+                        function roleHrs(d){ var t=0; MS.forEach(function(m){t+=parseFloat(d[m])||0;}); return t; }
+                        var sched, sow;
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']){
+                            sched=roleHrs(p.data);
+                            sow=parseFloat(p.data['SoW Total'])||0;
+                        } else {
+                            var dept=p.data['_dept']; sched=0; sow=0;
+                            p.api.forEachNode(function(n){
+                                if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                                   (p.data['_is_grand']||n.data['_dept']===dept)){
+                                    sched+=roleHrs(n.data);
+                                    sow+=parseFloat(n.data['SoW Total'])||0;
+                                }
+                            });
+                        }
+                        return sow>0 ? Math.round(sched/sow*1000)/10 : 0;
+                    }"""),
+                    valueFormatter="x.toFixed(1)+'%'",
+                    cellStyle=JsCode("""function(p){
+                        if(p.data['_is_sub']||p.data['_is_grand']) return {fontWeight:'700'};
+                        var v=p.value||0;
+                        if(v>100) return {color:'#dc2626',fontWeight:'700'};
+                        return {};
+                    }"""))
+
                 if _is_pct:
                     _month_valueGetter = JsCode("""function(p) {
                         if (!p.data) return null;
