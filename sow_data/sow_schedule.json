@@ -1720,8 +1720,8 @@
     },
     "Head of Production": {
       "Jan": 0.0,
-      "Feb": 0.9,
-      "Mar": 0.9,
+      "Feb": 1.0,
+      "Mar": 1.0,
       "Apr": 0.1,
       "May": 0.0,
       "Jun": 0.0,
