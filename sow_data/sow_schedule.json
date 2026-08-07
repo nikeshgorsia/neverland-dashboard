@@ -1267,7 +1267,7 @@
       "Dec"
     ],
     "Chief Executive Officer": {
-      "Jan": 0.7,
+      "Jan": 4.0,
       "Feb": 0.3,
       "Mar": 0.3,
       "Apr": 0.3,
@@ -1281,7 +1281,7 @@
       "Dec": 0.3
     },
     "Founder, Creative Comms & CCO": {
-      "Jan": 0.4,
+      "Jan": 7.0,
       "Feb": 0.6,
       "Mar": 0.6,
       "Apr": 0.6,
@@ -1295,7 +1295,7 @@
       "Dec": 0.6
     },
     "Head of Client Service": {
-      "Jan": 1.0,
+      "Jan": 12.0,
       "Feb": 1.0,
       "Mar": 1.0,
       "Apr": 1.0,
@@ -1309,7 +1309,7 @@
       "Dec": 1.0
     },
     "Account Director": {
-      "Jan": 1.6,
+      "Jan": 17.0,
       "Feb": 1.4,
       "Mar": 1.4,
       "Apr": 1.4,
@@ -1323,7 +1323,7 @@
       "Dec": 1.4
     },
     "Account Manager": {
-      "Jan": 3.2,
+      "Jan": 34.0,
       "Feb": 2.8,
       "Mar": 2.8,
       "Apr": 2.8,
@@ -1337,7 +1337,7 @@
       "Dec": 2.8
     },
     "Chief Strategy Officer": {
-      "Jan": 0.3,
+      "Jan": 8.0,
       "Feb": 0.7,
       "Mar": 0.7,
       "Apr": 0.7,
@@ -1351,7 +1351,7 @@
       "Dec": 0.7
     },
     "Strategy Director": {
-      "Jan": 3.2,
+      "Jan": 34.0,
       "Feb": 2.8,
       "Mar": 2.8,
       "Apr": 2.8,
@@ -1365,7 +1365,7 @@
       "Dec": 2.8
     },
     "Creative Director": {
-      "Jan": 2.5,
+      "Jan": 30.0,
       "Feb": 2.5,
       "Mar": 2.5,
       "Apr": 2.5,
@@ -1379,7 +1379,7 @@
       "Dec": 2.5
     },
     "Head of Design": {
-      "Jan": 2.0,
+      "Jan": 24.0,
       "Feb": 2.0,
       "Mar": 2.0,
       "Apr": 2.0,
@@ -1393,7 +1393,7 @@
       "Dec": 2.0
     },
     "Senior Designer": {
-      "Jan": 8.3,
+      "Jan": 104.0,
       "Feb": 8.7,
       "Mar": 8.7,
       "Apr": 8.7,
