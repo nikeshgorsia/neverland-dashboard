@@ -2091,7 +2091,7 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand", "_rate"]
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand", "_rate", "_dept"]
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
@@ -2161,6 +2161,7 @@ with tab_sow:
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_rate", hide=True)
+                gb.configure_column("_dept", hide=True)
                 gb.configure_grid_options(
                     rowHeight=35,
                     suppressMovableColumns=True,
