@@ -1902,12 +1902,11 @@ with tab_sow:
             sources = sow_df["_source"].unique().tolist()
             with st.expander(f"Manage loaded files ({len(sources)})", expanded=False):
                 # Build client list from pipeline
-                _pipe_clients = []
-                if "pipeline" in st.session_state:
-                    for _pdf in st.session_state["pipeline"].values():
-                        if isinstance(_pdf, pd.DataFrame) and "Client" in _pdf.columns:
-                            _pipe_clients.extend(_pdf["Client"].dropna().unique().tolist())
-                _pipe_clients = sorted(set(_pipe_clients))
+                _pipe_clients = [
+                    "AGE UK", "CENTER PARCS", "CITY HALL", "CRODINO", "ENTAIN",
+                    "GREENE KING", "HOSTELWORLD", "IG", "KOPPARBERG", "ONKEN",
+                    "RIGHTMOVE", "SHARPS", "UNICEF", "WHICH?",
+                ]
 
                 if "sow_schedule" not in st.session_state:
                     try:
