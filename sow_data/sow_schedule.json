@@ -32,10 +32,10 @@
       "Executive Producer": 136.0
     },
     "CEO": {
-      "Jan": 5.0,
-      "Feb": 5.0,
-      "Mar": 5.0,
-      "Apr": 5.0,
+      "Jan": 3.5,
+      "Feb": 3.5,
+      "Mar": 3.5,
+      "Apr": 3.5,
       "May": 0.0,
       "Jun": 0.0,
       "Jul": 0.0,
@@ -879,7 +879,7 @@
     },
     "Head of CS": {
       "Jan": 1.0,
-      "Feb": 0.0,
+      "Feb": 1.0,
       "Mar": 0.0,
       "Apr": 0.0,
       "May": 0.0,
