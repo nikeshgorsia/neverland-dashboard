@@ -1916,19 +1916,18 @@ with tab_sow:
                         st.session_state["sow_schedule"] = {}
                 _job_numbers = st.session_state["sow_schedule"].get("_job_numbers", {})
 
-                st.caption("Project name · Client · Job number(s)")
                 _jobs_changed = False
                 for src in sources:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
                     cur_jobs   = _job_numbers.get(cur_proj, "")
-                    c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
+                    c1, c2, c3 = st.columns([3, 3, 1])
                     new_proj = c1.text_input("Project name", value=cur_proj, key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
                     _client_opts = [""] + _pipe_clients
                     _client_idx  = _client_opts.index(cur_client) if cur_client in _client_opts else 0
                     new_client = c2.selectbox("Client", options=_client_opts, index=_client_idx, key=f"client_{src}", label_visibility="collapsed")
-                    new_jobs = c3.text_input("Job numbers", value=cur_jobs, key=f"jobs_{src}", label_visibility="collapsed", placeholder="e.g. JOB001, JOB002")
+                    new_jobs = c1.text_input("Job numbers", value=cur_jobs, key=f"jobs_{src}", label_visibility="collapsed", placeholder="Job numbers (e.g. JOB001, JOB002)")
                     # Auto-save project/client on change
                     if new_proj != cur_proj or new_client != cur_client:
                         mask = st.session_state["sow_data"]["_source"] == src
@@ -1941,7 +1940,7 @@ with tab_sow:
                     if new_jobs != cur_jobs:
                         _job_numbers[new_proj] = new_jobs
                         _jobs_changed = True
-                    if c4.button("Remove", key=f"rm_sow_{src}"):
+                    if c3.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
                             st.session_state["sow_data"]["_source"] != src
                         ].reset_index(drop=True)
