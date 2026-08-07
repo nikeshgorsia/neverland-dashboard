@@ -2107,7 +2107,7 @@ with tab_sow:
                     allow_unsafe_jscode=True,
                     update_mode="VALUE_CHANGED",
                     fit_columns_on_grid_load=True,
-                    height=min(600, (len(sched_df) + 1) * 36 + 10),
+                    height=(len(sched_df) + 1) * 36 + 10,
                     key=f"sched_editor_{sel_proj}",
                 )
                 edited_df = grid_resp["data"].copy()
