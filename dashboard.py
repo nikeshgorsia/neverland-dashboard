@@ -2104,23 +2104,56 @@ with tab_sow:
                             return {borderRight:'1px solid #555'};
                     }"""))
                 gb.configure_column("Role", minWidth=160)
-                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90,
-                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"))
+                _MS_JS = str(_MS)  # e.g. "['Jan','Feb',...]"
+                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], minWidth=75, maxWidth=90,
+                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
+                    valueGetter=JsCode("""function(p){
+                        if(!p.data) return 0;
+                        if(!p.data['_is_sub'] && !p.data['_is_grand']) return p.data['SoW Total']||0;
+                        var dept=p.data['_dept'], total=0;
+                        p.api.forEachNode(function(n){
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                               (p.data['_is_grand']||n.data['_dept']===dept))
+                                total+=parseFloat(n.data['SoW Total'])||0;
+                        }); return Math.round(total*10)/10;
+                    }"""),
+                    valueFormatter="x.toFixed(1)")
                 gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], minWidth=90, maxWidth=110,
                     valueGetter=JsCode("""function(p){
                         if(!p.data) return 0;
-                        var rate = p.data['_rate'] || 0;
-                        return rate > 0
-                            ? Math.round(p.data['SoW Total'] * rate)
-                            : (p.data['SoW Total (£)'] || 0);
+                        function roleVal(d){
+                            var r=d['_rate']||0;
+                            return r>0?Math.round((d['SoW Total']||0)*r):(d['SoW Total (£)']||0);
+                        }
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']) return roleVal(p.data);
+                        var dept=p.data['_dept'],total=0;
+                        p.api.forEachNode(function(n){
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                               (p.data['_is_grand']||n.data['_dept']===dept))
+                                total+=roleVal(n.data);
+                        }); return total;
                     }"""),
-                    valueFormatter="'£' + x.toLocaleString('en-GB', {maximumFractionDigits:0})")
-                gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=85, maxWidth=105,
+                    valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})")
+                gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], minWidth=85, maxWidth=105,
+                    valueGetter=JsCode("""function(p){
+                        if(!p.data) return 0;
+                        var MS=""" + str(_MS) + """;
+                        function roleHrs(d){ var t=0; MS.forEach(function(m){t+=parseFloat(d[m])||0;}); return Math.round(t*10)/10; }
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']) return roleHrs(p.data);
+                        var dept=p.data['_dept'],total=0;
+                        p.api.forEachNode(function(n){
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                               (p.data['_is_grand']||n.data['_dept']===dept))
+                                total+=roleHrs(n.data);
+                        }); return Math.round(total*10)/10;
+                    }"""),
+                    valueFormatter="x.toFixed(1)",
                     cellStyle=JsCode("""function(p){
-                        if(p.data['_is_sub']) return {fontWeight:'700'};
-                        return p.value > p.data['SoW Total']
-                            ? {color:'#dc2626', fontWeight:'700'}
-                            : {};
+                        if(p.data['_is_sub']||p.data['_is_grand']) return {fontWeight:'700'};
+                        var MS=""" + str(_MS) + """;
+                        var sched=0; MS.forEach(function(m){sched+=parseFloat(p.data[m])||0;});
+                        return sched > (p.data['SoW Total']||0)
+                            ? {color:'#dc2626', fontWeight:'700'} : {};
                     }"""))
                 for m in _MS:
                     gb.configure_column(m, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68,
@@ -2128,7 +2161,6 @@ with tab_sow:
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_rate", hide=True)
-                gb.configure_column("SoW Total (£)", hide=False)
                 gb.configure_grid_options(
                     rowHeight=35,
                     suppressMovableColumns=True,
