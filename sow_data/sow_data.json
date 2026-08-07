@@ -1218,5 +1218,125 @@
     "Total Hours": NaN,
     "Total Fee": NaN,
     "_source": "CP x NVL Strategic Support Q1 2026_V3 21.01.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Head of CS",
+    "Hourly Rate": 205.0,
+    "Total Hours": 3.0,
+    "Total Fee": 615.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Business Director",
+    "Hourly Rate": 149.0,
+    "Total Hours": 19.0,
+    "Total Fee": 2831.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Director",
+    "Hourly Rate": 120.0,
+    "Total Hours": 39.0,
+    "Total Fee": 4680.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Executive",
+    "Hourly Rate": 55.0,
+    "Total Hours": 13.0,
+    "Total Fee": 715.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategy Director",
+    "Hourly Rate": 205.0,
+    "Total Hours": 20.0,
+    "Total Fee": 4100.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 205.0,
+    "Total Hours": 21.0,
+    "Total Fee": 4305.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative (AD)",
+    "Hourly Rate": 120.0,
+    "Total Hours": 72.0,
+    "Total Fee": 8640.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative (CW)",
+    "Hourly Rate": 120.0,
+    "Total Hours": 72.0,
+    "Total Fee": 8640.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 200.0,
+    "Total Hours": 4.0,
+    "Total Fee": 800.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Designer",
+    "Hourly Rate": 150.0,
+    "Total Hours": 28.0,
+    "Total Fee": 4200.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Head of Production",
+    "Hourly Rate": 225.0,
+    "Total Hours": 2.0,
+    "Total Fee": 450.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "0. 2026 HH Comms Vehicle Creative and Strat ONLY",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Producer",
+    "Hourly Rate": 120.0,
+    "Total Hours": 2.0,
+    "Total Fee": 240.0,
+    "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
   }
 ]
