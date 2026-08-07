@@ -2134,7 +2134,7 @@ with tab_sow:
             for _proj, _proj_sched in _schedule.items():
                 _seen_roles = set()
                 for _role, _months in _proj_sched.items():
-                    if _role.startswith("_"):  # skip internal keys
+                    if not isinstance(_role, str) or _role.startswith("_"):  # skip internal keys
                         continue
                     if not isinstance(_months, dict):
                         continue
