@@ -1909,15 +1909,25 @@ with tab_sow:
                             _pipe_clients.extend(_pdf["Client"].dropna().unique().tolist())
                 _pipe_clients = sorted(set(_pipe_clients))
 
+                if "sow_schedule" not in st.session_state:
+                    try:
+                        st.session_state["sow_schedule"] = load_sow_schedule()
+                    except Exception:
+                        st.session_state["sow_schedule"] = {}
+                _job_numbers = st.session_state["sow_schedule"].get("_job_numbers", {})
+
+                st.caption("Project name · Client · Job number(s)")
                 for src in sources:
                     sub = sow_df[sow_df["_source"] == src]
                     cur_proj   = sub["Project"].iloc[0] if not sub.empty else src
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
-                    c1, c2, c3 = st.columns([3, 3, 1])
+                    cur_jobs   = _job_numbers.get(cur_proj, "")
+                    c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
                     new_proj = c1.text_input("Project name", value=cur_proj, key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
                     _client_opts = [""] + _pipe_clients
                     _client_idx  = _client_opts.index(cur_client) if cur_client in _client_opts else 0
                     new_client = c2.selectbox("Client", options=_client_opts, index=_client_idx, key=f"client_{src}", label_visibility="collapsed")
+                    new_jobs = c3.text_input("Job numbers", value=cur_jobs, key=f"jobs_{src}", label_visibility="collapsed", placeholder="e.g. JOB001, JOB002")
                     # Auto-save on any change
                     if new_proj != cur_proj or new_client != cur_client:
                         mask = st.session_state["sow_data"]["_source"] == src
@@ -1927,7 +1937,11 @@ with tab_sow:
                             save_sow_data(st.session_state["sow_data"])
                         except Exception:
                             pass
-                    if c3.button("Remove", key=f"rm_sow_{src}"):
+                    if new_jobs != cur_jobs:
+                        _job_numbers[new_proj] = new_jobs
+                        st.session_state["sow_schedule"]["_job_numbers"] = _job_numbers
+                        save_sow_schedule(st.session_state["sow_schedule"])
+                    if c4.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
                             st.session_state["sow_data"]["_source"] != src
                         ].reset_index(drop=True)
