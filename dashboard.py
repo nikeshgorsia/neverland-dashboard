@@ -2072,8 +2072,18 @@ with tab_sow:
                         sub[m] = grp[m].sum()
                     final_rows.append(pd.DataFrame([sub]))
                 sched_df = pd.concat(final_rows, ignore_index=True)
-                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub"]
+                # Grand total row
+                role_only = sched_df[sched_df["_is_sub"] != True]
+                grand = {"Role": "Grand Total", "_dept": "", "_is_sub": False, "_is_grand": True,
+                         "SoW Total": role_only["SoW Total"].sum(),
+                         "SoW Total (£)": role_only["SoW Total (£)"].sum(),
+                         "Scheduled": role_only["Scheduled"].sum()}
+                for m in _MS:
+                    grand[m] = role_only[m].sum()
+                sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub", "_is_grand"]
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
+                sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
 
                 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
                 gb = GridOptionsBuilder.from_dataframe(sched_df)
@@ -2092,11 +2102,13 @@ with tab_sow:
                     gb.configure_column(m, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68,
                         editable=JsCode("function(p){ return !p.data['_is_sub']; }"))
                 gb.configure_column("_is_sub", hide=True)
-                # Bold entire subtotal row
+                gb.configure_column("_is_grand", hide=True)
                 gb.configure_grid_options(
                     rowHeight=35,
                     suppressMovableColumns=True,
                     getRowStyle=JsCode("""function(p){
+                        if(p.data && p.data['_is_grand'])
+                            return {fontWeight:'700', background:'#1A1A1A', color:'#FFFFFF'};
                         if(p.data && p.data['_is_sub'])
                             return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
                     }"""),
@@ -2111,8 +2123,8 @@ with tab_sow:
                     key=f"sched_editor_{sel_proj}",
                 )
                 edited_df = grid_resp["data"].copy()
-                # Exclude subtotal rows from save logic
-                edited_df = edited_df[edited_df["_is_sub"] != True].copy()
+                # Exclude subtotal and grand total rows from save logic
+                edited_df = edited_df[(edited_df["_is_sub"] != True) & (edited_df["_is_grand"] != True)].copy()
                 for m in _MS:
                     edited_df[m] = pd.to_numeric(edited_df[m], errors="coerce").fillna(0.0)
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
