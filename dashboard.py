@@ -2205,6 +2205,64 @@ with tab_sow:
 
 
 # ── Floating AI Chat ──────────────────────────────────────────────────────────
+_CHAT_MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+_CHAT_TOOLS = [
+    {
+        "name": "update_monthly_schedule",
+        "description": (
+            "Update the monthly hour allocations for one or more roles in a specific SoW project. "
+            "Use when the user asks to change, redistribute, or split hours across months. "
+            "Only set the months that should change; omit months that stay the same."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "description": "Exact project/SoW name"},
+                "updates": {
+                    "type": "array",
+                    "description": "One entry per role to update",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {"type": "string"},
+                            **{m: {"type": "number"} for m in _CHAT_MS},
+                        },
+                        "required": ["role"],
+                    },
+                },
+            },
+            "required": ["project", "updates"],
+        },
+    }
+]
+
+
+def _execute_chat_tool(tool_name, tool_input):
+    if tool_name == "update_monthly_schedule":
+        project = tool_input["project"]
+        updates = tool_input.get("updates", [])
+        schedule = st.session_state.get("sow_schedule", {})
+        proj_sched = dict(schedule.get(project, {}))
+        changed = []
+        for upd in updates:
+            role = upd["role"]
+            role_data = dict(proj_sched.get(role, {}))
+            for m in _CHAT_MS:
+                if m in upd:
+                    role_data[m] = float(upd[m])
+            proj_sched[role] = role_data
+            changed.append(role)
+        schedule[project] = proj_sched
+        st.session_state["sow_schedule"] = schedule
+        try:
+            save_sow_schedule(schedule)
+            return f"Updated schedule for {len(changed)} role(s) in '{project}': {', '.join(changed)}. Changes saved."
+        except Exception as _e:
+            return f"Changes applied in session but failed to persist: {_e}"
+    return f"Unknown tool: {tool_name}"
+
+
 def _build_chat_context():
     parts = []
     if "pipeline" in st.session_state:
@@ -2216,12 +2274,10 @@ def _build_chat_context():
                 _num = _df[_month_cols].apply(pd.to_numeric, errors="coerce").fillna(0)
                 _annual = _num.values.sum()
                 parts.append(f"\nPipeline status: {_status} — Annual total: £{_annual:,.0f}")
-                # Monthly totals
                 _monthly = _num.sum()
                 for _m in MONTHS:
                     if _m in _monthly.index:
                         parts.append(f"  {_m}: £{_monthly[_m]:,.0f}")
-                # Per-client breakdown
                 if "Client" in _df.columns:
                     for _, _row in _df.iterrows():
                         _client = _row.get("Client", "Unknown")
@@ -2236,11 +2292,26 @@ def _build_chat_context():
         _sow = st.session_state["sow_data"]
         _hrs = pd.to_numeric(_sow["Total Hours"], errors="coerce").sum()
         _fee = pd.to_numeric(_sow["Total Fee"], errors="coerce").sum()
-        _projs = _sow["Project"].nunique() if "Project" in _sow.columns else 0
-        parts.append(f"Scope of Works: {_projs} projects, {_hrs:,.0f} total hours, £{_fee:,.0f} total fee")
+        _projs = sorted(_sow["Project"].dropna().unique().tolist()) if "Project" in _sow.columns else []
+        parts.append(f"Scope of Works: {len(_projs)} projects, {_hrs:,.0f} total hours, £{_fee:,.0f} total fee")
+        parts.append(f"Projects: {', '.join(_projs)}")
         for _d, _row in _sow.groupby("Department").agg(Hours=("Total Hours","sum"), Fee=("Total Fee","sum")).iterrows():
             if _d:
                 parts.append(f"  Dept {_d}: {pd.to_numeric(_row['Hours'], errors='coerce'):,.0f} hrs, £{pd.to_numeric(_row['Fee'], errors='coerce'):,.0f}")
+        # Per-project per-role schedule
+        _schedule = st.session_state.get("sow_schedule", {})
+        for _proj in _projs:
+            _proj_rows = _sow[_sow["Project"] == _proj]
+            _role_hrs = _proj_rows.groupby("Role")["Total Hours"].sum()
+            parts.append(f"\nSoW '{_proj}':")
+            _saved = _schedule.get(_proj, {})
+            for _role, _total in _role_hrs.items():
+                _role_sched = _saved.get(_role, {})
+                _months_str = ", ".join(
+                    f"{m}:{float(_role_sched.get(m, round(_total/12, 1))):.1f}"
+                    for m in _CHAT_MS
+                )
+                parts.append(f"  {_role}: SoW total={_total:.1f}h | {_months_str}")
     if "budget" in st.session_state and isinstance(st.session_state["budget"], pd.DataFrame):
         parts.append(f"Budget data: {len(st.session_state['budget'])} rows loaded")
     if "capacity" in st.session_state and isinstance(st.session_state["capacity"], pd.DataFrame):
@@ -2259,7 +2330,13 @@ def _chat_popup():
     with _chat_area:
         for _msg in st.session_state["chat_messages"]:
             with st.chat_message(_msg["role"]):
-                st.markdown(_msg["content"])
+                _content = _msg["content"]
+                if isinstance(_content, list):
+                    for _block in _content:
+                        if isinstance(_block, dict) and _block.get("type") == "text":
+                            st.markdown(_block["text"])
+                else:
+                    st.markdown(_content)
 
     _user_input = st.chat_input("Ask about your data...")
     if st.button("Clear", key="clear_chat_popup"):
@@ -2270,8 +2347,9 @@ def _chat_popup():
         st.session_state["chat_messages"].append({"role": "user", "content": _user_input})
         _system_prompt = (
             "You are the Neverland Finance AI assistant, embedded in Neverland Creative Agency's "
-            "finance dashboard. You help the team understand their financial data — pipeline revenue, "
-            "capacity, budgets, and scope of works. Be concise and direct. Format numbers clearly.\n\n"
+            "finance dashboard. You help the team understand their financial data and can make changes "
+            "to the monthly schedule when asked. When updating schedules, confirm what you changed. "
+            "Be concise and direct. Format numbers clearly.\n\n"
             "Current dashboard data:\n" + _build_chat_context()
         )
         try:
@@ -2279,23 +2357,50 @@ def _chat_popup():
             _api_key = str(st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
             _client = _anthropic.Anthropic(api_key=_api_key)
             _history = [{"role": m["role"], "content": m["content"]} for m in st.session_state["chat_messages"]]
+
             with _chat_area:
                 with st.chat_message("user"):
                     st.markdown(_user_input)
                 with st.chat_message("assistant"):
                     _placeholder = st.empty()
-                    _full = ""
-                    with _client.messages.stream(
-                        model="claude-opus-5",
-                        max_tokens=1024,
-                        system=_system_prompt,
-                        messages=_history,
-                    ) as _stream:
-                        for _chunk in _stream.text_stream:
-                            _full += _chunk
-                            _placeholder.markdown(_full + "▌")
-                    _placeholder.markdown(_full)
-            st.session_state["chat_messages"].append({"role": "assistant", "content": _full})
+                    _placeholder.markdown("▌")
+
+                    # Agentic loop: handle tool calls until done
+                    _messages = list(_history)
+                    _final_text = ""
+                    while True:
+                        _resp = _client.messages.create(
+                            model="claude-opus-5",
+                            max_tokens=2048,
+                            system=_system_prompt,
+                            tools=_CHAT_TOOLS,
+                            messages=_messages,
+                        )
+                        # Collect text from this response
+                        for _block in _resp.content:
+                            if hasattr(_block, "text"):
+                                _final_text += _block.text
+
+                        if _resp.stop_reason == "tool_use":
+                            # Execute all tool calls in this response
+                            _tool_results = []
+                            for _block in _resp.content:
+                                if _block.type == "tool_use":
+                                    _result = _execute_chat_tool(_block.name, _block.input)
+                                    _tool_results.append({
+                                        "type": "tool_result",
+                                        "tool_use_id": _block.id,
+                                        "content": _result,
+                                    })
+                            # Add assistant response + tool results to messages and loop
+                            _messages.append({"role": "assistant", "content": _resp.content})
+                            _messages.append({"role": "user", "content": _tool_results})
+                        else:
+                            break
+
+                    _placeholder.markdown(_final_text)
+
+            st.session_state["chat_messages"].append({"role": "assistant", "content": _final_text})
         except Exception as _e:
             st.error(f"AI error: {_e}")
 
