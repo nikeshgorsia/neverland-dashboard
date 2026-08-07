@@ -2038,12 +2038,13 @@ with tab_sow:
                 proj_rows = sow_df[sow_df["Project"] == sel_proj].copy()
                 role_totals     = proj_rows.groupby("Role")["Total Hours"].sum()
                 role_fee_totals = proj_rows.groupby("Role")["Total Fee"].sum()
+                role_dept       = proj_rows.groupby("Role")["Department"].first()
                 active_months = _MS
                 n_active = 12
                 sched_rows = []
                 saved_proj = schedule.get(sel_proj, {})
                 for role, total_hrs in role_totals.items():
-                    row = {"Role": role}
+                    row = {"Role": role, "_dept": role_dept.get(role, "Other"), "_is_sub": False}
                     if role in saved_proj and any(m in saved_proj[role] for m in _MS):
                         for m in _MS:
                             row[m] = float(saved_proj[role].get(m) or 0.0)
@@ -2051,15 +2052,27 @@ with tab_sow:
                         per_month = round(total_hrs / n_active, 1)
                         for m in _MS:
                             row[m] = per_month
-                        # correct rounding drift on first month
                         drift = round(total_hrs - sum(row[m] for m in _MS), 1)
                         row[_MS[0]] = round(row[_MS[0]] + drift, 1)
                     row["SoW Total"] = round(total_hrs, 1)
                     row["SoW Total (£)"] = round(float(role_fee_totals.get(role, 0)), 0)
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     sched_rows.append(row)
-                sched_df = pd.DataFrame(sched_rows)
-                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
+                sched_df = pd.DataFrame(sched_rows).sort_values(["_dept", "Role"])
+
+                # Insert a subtotal row after each department group
+                final_rows = []
+                for dept, grp in sched_df.groupby("_dept", sort=False):
+                    final_rows.append(grp)
+                    sub = {"Role": f"── {dept} total", "_dept": dept, "_is_sub": True,
+                           "SoW Total": grp["SoW Total"].sum(),
+                           "SoW Total (£)": grp["SoW Total (£)"].sum(),
+                           "Scheduled": grp["Scheduled"].sum()}
+                    for m in _MS:
+                        sub[m] = grp[m].sum()
+                    final_rows.append(pd.DataFrame([sub]))
+                sched_df = pd.concat(final_rows, ignore_index=True)
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS + ["_is_sub"]
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
 
                 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
@@ -2070,23 +2083,36 @@ with tab_sow:
                 gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})")
                 gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)",
                     cellStyle=JsCode("""function(p){
+                        if(p.data['_is_sub']) return {fontWeight:'700'};
                         return p.value > p.data['SoW Total']
                             ? {color:'#dc2626', fontWeight:'700'}
                             : {};
                     }"""))
                 for m in _MS:
-                    gb.configure_column(m, editable=True, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68)
-                gb.configure_grid_options(rowHeight=35, suppressMovableColumns=True)
+                    gb.configure_column(m, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68,
+                        editable=JsCode("function(p){ return !p.data['_is_sub']; }"))
+                gb.configure_column("_is_sub", hide=True)
+                # Bold entire subtotal row
+                gb.configure_grid_options(
+                    rowHeight=35,
+                    suppressMovableColumns=True,
+                    getRowStyle=JsCode("""function(p){
+                        if(p.data && p.data['_is_sub'])
+                            return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
+                    }"""),
+                )
                 grid_resp = AgGrid(
                     sched_df,
                     gridOptions=gb.build(),
                     allow_unsafe_jscode=True,
                     update_mode="VALUE_CHANGED",
                     fit_columns_on_grid_load=True,
-                    height=min(400, (len(sched_df) + 1) * 36 + 10),
+                    height=min(600, (len(sched_df) + 1) * 36 + 10),
                     key=f"sched_editor_{sel_proj}",
                 )
                 edited_df = grid_resp["data"].copy()
+                # Exclude subtotal rows from save logic
+                edited_df = edited_df[edited_df["_is_sub"] != True].copy()
                 for m in _MS:
                     edited_df[m] = pd.to_numeric(edited_df[m], errors="coerce").fillna(0.0)
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
