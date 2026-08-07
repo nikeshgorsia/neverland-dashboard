@@ -1966,13 +1966,26 @@ with tab_sow:
                     _schedule = {}
             _MS_ALL = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
             _role_scheduled: dict = {}
+            # Sum saved monthly splits; fall back to SoW total for unsaved roles
+            _sow_role_totals = (
+                sow_df.groupby("Role")["Total Hours"].sum().to_dict()
+                if "Role" in sow_df.columns else {}
+            )
             for _proj, _proj_sched in _schedule.items():
+                _seen_roles = set()
                 for _role, _months in _proj_sched.items():
-                    if _role == "_active_months":
+                    if _role.startswith("_"):  # skip internal keys
                         continue
+                    if not isinstance(_months, dict):
+                        continue
+                    _seen_roles.add(_role)
                     _role_scheduled[_role] = _role_scheduled.get(_role, 0.0) + sum(
                         float(_months.get(m) or 0) for m in _MS_ALL
                     )
+            # Roles with no saved schedule default to their full SoW total hours
+            for _role, _total in _sow_role_totals.items():
+                if _role not in _role_scheduled:
+                    _role_scheduled[_role] = float(_total)
 
             # ── department sections ───────────────────────────────────────────
             depts = sorted(d for d in sow_df["Department"].unique() if d)
