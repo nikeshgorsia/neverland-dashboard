@@ -2114,15 +2114,24 @@ with tab_sow:
 
                 _is_pct = st.session_state.get("sched_display_mode_v2", "Hours") == "% of SoW Total"
 
-                _role_names = [r for r in sched_df[~sched_df["_is_sub"] & ~sched_df["_is_grand"]]["Role"].tolist()]
+                _role_df = sched_df[~sched_df["_is_sub"] & ~sched_df["_is_grand"]][["Role", "_dept"]].copy()
+                _dept_role_map = {}
+                for _, _r in _role_df.iterrows():
+                    _dept_role_map.setdefault(_r["_dept"], []).append(_r["Role"])
+                _all_depts = [d for d in ["Management","Client Service","Strategy","Creative","Production"] if d in _dept_role_map]
+                _role_names = _role_df["Role"].tolist()
+
                 _bf_col1, _bf_col2, _bf_col3, _bf_col4 = st.columns([3, 3, 2, 1])
                 with _bf_col1:
-                    _bf_roles = st.multiselect("Bulk fill — Roles", _role_names, key=f"bf_roles_{sel_proj}")
+                    _bf_depts = st.multiselect("Bulk fill — Departments", _all_depts, key=f"bf_depts_{sel_proj}")
+                    _dept_roles = [r for d in _bf_depts for r in _dept_role_map.get(d, [])]
+                    _bf_roles = st.multiselect("Roles", _role_names, default=_dept_roles, key=f"bf_roles_{sel_proj}")
                 with _bf_col2:
                     _bf_months = st.multiselect("Months", _MS, key=f"bf_months_{sel_proj}")
                 with _bf_col3:
                     _bf_val = st.text_input("Value (e.g. 25 or 25%)", key=f"bf_val_{sel_proj}")
                 with _bf_col4:
+                    st.write("")
                     st.write("")
                     _bf_apply = st.button("Apply", key=f"bf_apply_{sel_proj}")
                 if _bf_apply and _bf_roles and _bf_months and _bf_val:
