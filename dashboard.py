@@ -2039,6 +2039,7 @@ with tab_sow:
                 role_totals     = proj_rows.groupby("Role")["Total Hours"].sum()
                 role_fee_totals = proj_rows.groupby("Role")["Total Fee"].sum()
                 role_dept       = proj_rows.groupby("Role")["Department"].first()
+                role_rate       = proj_rows.groupby("Role")["Hourly Rate"].max()
                 active_months = _MS
                 n_active = 12
                 sched_rows = []
@@ -2057,8 +2058,9 @@ with tab_sow:
                     row["SoW Total"] = round(total_hrs, 1)
                     row["SoW Total (£)"] = round(float(role_fee_totals.get(role, 0)), 0)
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
+                    row["_rate"] = float(role_rate.get(role, 0))
                     sched_rows.append(row)
-                sched_df = pd.DataFrame(sched_rows).sort_values(["_dept", "Role"])
+                sched_df = pd.DataFrame(sched_rows).sort_values(["_dept", "_rate"], ascending=[True, False])
 
                 # Insert a subtotal row after each department group
                 final_rows = []
@@ -2107,6 +2109,7 @@ with tab_sow:
                         editable=JsCode("function(p){ return !p.data['_is_sub']; }"))
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
+                gb.configure_column("_rate", hide=True)
                 gb.configure_grid_options(
                     rowHeight=35,
                     suppressMovableColumns=True,
