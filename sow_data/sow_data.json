@@ -1338,5 +1338,95 @@
     "Total Hours": 2.0,
     "Total Fee": 240.0,
     "_source": "0. 2026 HH Comms Vehicle Creative and Strat ONLY.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Business Director",
+    "Hourly Rate": 140.0,
+    "Total Hours": 4.0,
+    "Total Fee": 560.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Manager",
+    "Hourly Rate": 68.0,
+    "Total Hours": 18.0,
+    "Total Fee": 1224.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Head of Strategy",
+    "Hourly Rate": 200.0,
+    "Total Hours": 6.0,
+    "Total Fee": 1200.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategist",
+    "Hourly Rate": 88.0,
+    "Total Hours": 16.0,
+    "Total Fee": 1408.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 200.0,
+    "Total Hours": 5.0,
+    "Total Fee": 1000.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (AD)",
+    "Hourly Rate": 136.0,
+    "Total Hours": 14.0,
+    "Total Fee": 1904.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (CW)",
+    "Hourly Rate": 136.0,
+    "Total Hours": 14.0,
+    "Total Fee": 1904.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 200.0,
+    "Total Hours": 1.0,
+    "Total Fee": 200.0,
+    "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Omaze",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Designer",
+    "Hourly Rate": 100.0,
+    "Total Hours": 8.0,
+    "Total Fee": 800.0,
+    "_source": "AGE UK_Omaze.xlsx"
   }
 ]
