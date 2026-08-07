@@ -28,6 +28,9 @@
       "Head of Production": 14.0,
       "Executive Producer": 42.0
     },
+    "_rate_overrides": {
+      "Executive Producer": 136.0
+    },
     "CEO": {
       "Jan": 20.0,
       "Feb": 1.5,
