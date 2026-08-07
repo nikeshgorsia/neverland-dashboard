@@ -2060,41 +2060,33 @@ with tab_sow:
                     sched_rows.append(row)
                 sched_df = pd.DataFrame(sched_rows)
 
-                # ── Summary table (read-only, styled) ────────────────────────
-                summary_df = sched_df[["Role", "SoW Total", "SoW Total (£)", "Scheduled"]].copy()
-                summary_df = summary_df.rename(columns={
-                    "SoW Total": "Hrs Scoped",
-                    "SoW Total (£)": "Fee Scoped (£)",
-                    "Scheduled": "Scheduled ∑",
-                })
+                # Format Scheduled as text with 🔴 prefix when it exceeds SoW Total
+                def _fmt_sched(row):
+                    val = f"{row['Scheduled']:.1f}"
+                    return f"🔴 {val}" if row["Scheduled"] > row["SoW Total"] else val
 
-                def _style_sched(row):
-                    color = "color: #dc2626" if row["Scheduled ∑"] > row["Hrs Scoped"] else ""
-                    return ["", "", "", color]
+                display_df = sched_df.copy()
+                display_df["Scheduled"] = sched_df.apply(_fmt_sched, axis=1)
 
-                styled = (
-                    summary_df.style
-                    .apply(_style_sched, axis=1)
-                    .format({"Hrs Scoped": "{:.1f}", "Fee Scoped (£)": "£{:.0f}", "Scheduled ∑": "{:.1f}"})
-                )
-                st.dataframe(styled, use_container_width=True, hide_index=True)
-
-                # ── Editable month grid ───────────────────────────────────────
-                month_df = sched_df[["Role"] + _MS].copy()
-                month_config = {"Role": st.column_config.TextColumn("Role", disabled=True)}
+                col_config = {
+                    "Role":          st.column_config.TextColumn("Role", disabled=True),
+                    "SoW Total":     st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
+                    "SoW Total (£)": st.column_config.NumberColumn("SoW Total (£)", disabled=True, format="£%.0f"),
+                    "Scheduled":     st.column_config.TextColumn("Scheduled ∑", disabled=True),
+                }
                 for m in _MS:
-                    month_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
+                    col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
+                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
+                display_df = display_df[[c for c in col_order if c in display_df.columns]]
                 edited_df = st.data_editor(
-                    month_df, column_config=month_config,
+                    display_df, column_config=col_config,
                     use_container_width=True, hide_index=True,
                     key=f"sched_editor_{sel_proj}",
                 )
-                # merge edits back so auto-save logic can use edited_df["Scheduled"] / sow cols
-                edited_df = edited_df.merge(
-                    sched_df[["Role", "SoW Total", "SoW Total (£)"]],
-                    on="Role", how="left",
-                )
+                # Recalculate numeric Scheduled from month edits (display_df Scheduled is text)
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
+                # Restore numeric SoW Total for save logic
+                edited_df["SoW Total"] = sched_df["SoW Total"].values
 
                 # Auto-save whenever values differ from what's persisted
                 new_proj_schedule = {"_active_months": active_months}
