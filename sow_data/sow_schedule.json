@@ -1579,10 +1579,7 @@
       "Dec"
     ],
     "_total_overrides": {
-      "NaN": NaN
-    },
-    "_role_name_overrides": {
-      "NaN": "Grand Total \u00a3"
+      "Grand Total \u00a3": NaN
     },
     "Head of CS": {
       "Jan": 0.0,
@@ -1670,9 +1667,9 @@
     },
     "Head of Design": {
       "Jan": 0.0,
-      "Feb": 1.9,
-      "Mar": 1.9,
-      "Apr": 0.2,
+      "Feb": 2.0,
+      "Mar": 2.0,
+      "Apr": 0.0,
       "May": 0.0,
       "Jun": 0.0,
       "Jul": 0.0,
@@ -1752,7 +1749,7 @@
       "Nov": 0.0,
       "Dec": 0.0
     },
-    "NaN": {
+    "Grand Total \u00a3": {
       "Jan": 0.0,
       "Feb": 18930.0,
       "Mar": 18930.0,
