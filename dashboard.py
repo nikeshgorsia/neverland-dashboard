@@ -2511,7 +2511,7 @@ with tab_sow:
                         if(p.data && p.data['_is_grand'])
                             return {fontWeight:'700', fontSize:'15px', background:'#1A1A1A', color:'#FFFFFF', borderTop:'2px solid #555', borderBottom:'2px solid #555'};
                         if(p.data && p.data['_is_grand_fee'])
-                            return {fontWeight:'700', fontSize:'13px', background:'#2d4a1e', color:'#d4f5a0', borderBottom:'2px solid #555', fontStyle:'italic'};
+                            return {fontWeight:'700', fontSize:'10px', background:'#2d4a1e', color:'#d4f5a0', borderBottom:'2px solid #555', fontStyle:'italic'};
                         if(p.data && p.data['_is_sub'])
                             return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
                     }"""),
