@@ -2105,8 +2105,11 @@ with tab_sow:
                         if(p.data && p.data['_is_grand'])
                             return {borderRight:'1px solid #555'};
                     }"""))
-                gb.configure_column("Role", minWidth=160,
-                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"))
+                gb.configure_column("Role", minWidth=160, editable=True,
+                    valueSetter=JsCode("""function(p){
+                        if(p.data['_is_sub']||p.data['_is_grand']) return false;
+                        p.data['Role']=p.newValue; return true;
+                    }"""))
                 gb.configure_column("_orig_role", hide=True)
                 _MS_JS = str(_MS)  # e.g. "['Jan','Feb',...]"
                 gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], minWidth=75, maxWidth=90,
