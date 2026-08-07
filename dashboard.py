@@ -2059,59 +2059,38 @@ with tab_sow:
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     sched_rows.append(row)
                 sched_df = pd.DataFrame(sched_rows)
-
-                # Mark over-budget rows with a sentinel so JS can colour them red
-                def _fmt_sched(row):
-                    val = f"{row['Scheduled']:.1f}"
-                    return f"​{val}" if row["Scheduled"] > row["SoW Total"] else val
-
-                display_df = sched_df.copy()
-                display_df["Scheduled"] = sched_df.apply(_fmt_sched, axis=1)
-                # JS: strip sentinel, colour text red; MutationObserver handles rerenders
-                st.markdown("""
-                <script>
-                (function(){
-                  function applyRed(){
-                    document.querySelectorAll('.ag-cell[col-id="Scheduled"]').forEach(function(cell){
-                      var t = cell.innerText || '';
-                      if(t.charCodeAt(0)===8203){
-                        cell.style.color='#dc2626';
-                        cell.style.fontWeight='600';
-                        var span = cell.querySelector('.ag-cell-value') || cell;
-                        span.childNodes.forEach(function(n){
-                          if(n.nodeType===3) n.textContent=n.textContent.replace('​','');
-                        });
-                      } else {
-                        cell.style.color='';
-                        cell.style.fontWeight='';
-                      }
-                    });
-                  }
-                  var obs = new MutationObserver(applyRed);
-                  obs.observe(document.body,{childList:true,subtree:true});
-                  applyRed();
-                })();
-                </script>""", unsafe_allow_html=True)
-
-                col_config = {
-                    "Role":          st.column_config.TextColumn("Role", disabled=True),
-                    "SoW Total":     st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
-                    "SoW Total (£)": st.column_config.NumberColumn("SoW Total (£)", disabled=True, format="£%.0f"),
-                    "Scheduled":     st.column_config.TextColumn("Scheduled ∑", disabled=True),
-                }
-                for m in _MS:
-                    col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
                 col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
-                display_df = display_df[[c for c in col_order if c in display_df.columns]]
-                edited_df = st.data_editor(
-                    display_df, column_config=col_config,
-                    use_container_width=True, hide_index=True,
+                sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
+
+                from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+                gb = GridOptionsBuilder.from_dataframe(sched_df)
+                gb.configure_default_column(editable=False, resizable=True)
+                gb.configure_column("Role", minWidth=160)
+                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)")
+                gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})")
+                gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)",
+                    cellStyle=JsCode("""function(p){
+                        return p.value > p.data['SoW Total']
+                            ? {color:'#dc2626', fontWeight:'700'}
+                            : {};
+                    }"""))
+                for m in _MS:
+                    gb.configure_column(m, editable=True, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68)
+                gb.configure_grid_options(rowHeight=35, suppressMovableColumns=True)
+                grid_resp = AgGrid(
+                    sched_df,
+                    gridOptions=gb.build(),
+                    allow_unsafe_jscode=True,
+                    update_mode="VALUE_CHANGED",
+                    fit_columns_on_grid_load=True,
+                    height=min(400, (len(sched_df) + 1) * 36 + 10),
                     key=f"sched_editor_{sel_proj}",
                 )
-                # Recalculate numeric Scheduled from month edits (display_df Scheduled is text)
+                edited_df = grid_resp["data"].copy()
+                for m in _MS:
+                    edited_df[m] = pd.to_numeric(edited_df[m], errors="coerce").fillna(0.0)
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
-                # Restore numeric SoW Total for save logic
-                edited_df["SoW Total"] = sched_df["SoW Total"].values
+                edited_df["SoW Total"] = pd.to_numeric(edited_df["SoW Total"], errors="coerce")
 
                 # Auto-save whenever values differ from what's persisted
                 new_proj_schedule = {"_active_months": active_months}
