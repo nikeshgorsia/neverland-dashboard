@@ -2035,6 +2035,7 @@ with tab_sow:
     if sow_view == "Monthly Schedule":
         # ── Monthly Schedule ──────────────────────────────────────────────────
         st.caption("Hours are spread evenly across active months by default. Edit any cell to override.")
+        pct_mode = st.selectbox("📊 Display hours as", ["Hours", "% of SoW Total"], key="sched_display_mode_v2", index=0)
         if sow_df.empty:
             st.info("No data yet. Upload a Scope of Work file in the Summary view first.")
         else:
@@ -2111,6 +2112,54 @@ with tab_sow:
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
 
+                _is_pct = st.session_state.get("sched_display_mode_v2", "Hours") == "% of SoW Total"
+
+                _role_names = [r for r in sched_df[~sched_df["_is_sub"] & ~sched_df["_is_grand"]]["Role"].tolist()]
+                _bf_col1, _bf_col2, _bf_col3, _bf_col4 = st.columns([3, 3, 2, 1])
+                with _bf_col1:
+                    _bf_roles = st.multiselect("Bulk fill — Roles", _role_names, key=f"bf_roles_{sel_proj}")
+                with _bf_col2:
+                    _bf_months = st.multiselect("Months", _MS, key=f"bf_months_{sel_proj}")
+                with _bf_col3:
+                    _bf_val = st.text_input("Value (e.g. 25 or 25%)", key=f"bf_val_{sel_proj}")
+                with _bf_col4:
+                    st.write("")
+                    _bf_apply = st.button("Apply", key=f"bf_apply_{sel_proj}")
+                if _bf_apply and _bf_roles and _bf_months and _bf_val:
+                    _raw = _bf_val.strip()
+                    _is_pct_fill = _raw.endswith("%")
+                    _num = float(_raw.rstrip("%"))
+                    for _idx, _row in sched_df.iterrows():
+                        if _row.get("_is_sub") or _row.get("_is_grand"):
+                            continue
+                        if _row["Role"] not in _bf_roles:
+                            continue
+                        _sow = float(_row["SoW Total"] or 0)
+                        _fill_val = round(_num / 100 * _sow, 1) if _is_pct_fill else _num
+                        for _m in _bf_months:
+                            sched_df.at[_idx, _m] = _fill_val
+                    _new_sched = {"_active_months": active_months}
+                    _new_ov = {}; _new_ro = {}; _new_rno = {}
+                    for _idx2, _row2 in sched_df.iterrows():
+                        if _row2.get("_is_sub") or _row2.get("_is_grand"):
+                            continue
+                        _orig = _row2.get("_orig_role") or _row2["Role"]
+                        _new_sched[_orig] = {m: float(_row2[m]) for m in _MS}
+                        _pt = round(float(role_totals.get(_orig, 0)), 1)
+                        _et = round(float(pd.to_numeric(_row2["SoW Total"], errors="coerce") or 0), 1)
+                        if _et != _pt: _new_ov[_orig] = _et
+                        _pr = float(role_rate.get(_orig, 0))
+                        _er = float(pd.to_numeric(_row2.get("_rate", _pr), errors="coerce") or _pr)
+                        if _er != _pr: _new_ro[_orig] = _er
+                        if _row2["Role"] != _orig: _new_rno[_orig] = _row2["Role"]
+                    if _new_ov: _new_sched["_total_overrides"] = _new_ov
+                    if _new_ro: _new_sched["_rate_overrides"] = _new_ro
+                    if _new_rno: _new_sched["_role_name_overrides"] = _new_rno
+                    schedule[sel_proj] = _new_sched
+                    st.session_state["sow_schedule"] = schedule
+                    save_sow_schedule(schedule)
+                    st.rerun()
+
                 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
                 gb = GridOptionsBuilder.from_dataframe(sched_df)
                 gb.configure_default_column(editable=False, resizable=True,
@@ -2175,9 +2224,55 @@ with tab_sow:
                         return sched > (p.data['SoW Total']||0)
                             ? {color:'#dc2626', fontWeight:'700'} : {};
                     }"""))
+                if _is_pct:
+                    _month_valueGetter = JsCode("""function(p) {
+                        if (!p.data) return null;
+                        var field = p.colDef.field;
+                        if (p.data['_is_sub'] || p.data['_is_grand']) {
+                            var dept = p.data['_dept'], total = 0;
+                            p.api.forEachNode(function(n) {
+                                if (n.data && !n.data['_is_sub'] && !n.data['_is_grand'] &&
+                                    (p.data['_is_grand'] || n.data['_dept'] === dept))
+                                    total += parseFloat(n.data[field]) || 0;
+                            });
+                            return Math.round(total * 10) / 10;
+                        }
+                        var hrs = parseFloat(p.data[field]) || 0;
+                        var sow = parseFloat(p.data['SoW Total']) || 0;
+                        return sow > 0 ? Math.round(hrs / sow * 1000) / 10 : 0;
+                    }""")
+                    _month_valueSetter = JsCode("""function(p) {
+                        if (p.data['_is_sub'] || p.data['_is_grand']) return false;
+                        var pct = parseFloat(p.newValue);
+                        if (isNaN(pct)) return false;
+                        var sow = parseFloat(p.data['SoW Total']) || 0;
+                        p.data[p.colDef.field] = Math.round(pct / 100 * sow * 10) / 10;
+                        return true;
+                    }""")
+                    _month_fmt = "x !== null && x !== undefined ? x.toFixed(1)+'%' : '0.0%'"
+                else:
+                    _month_valueGetter = None
+                    _month_valueSetter = JsCode("""function(p) {
+                        if (p.data['_is_sub'] || p.data['_is_grand']) return false;
+                        var val = parseFloat(p.newValue);
+                        if (isNaN(val)) return false;
+                        p.data[p.colDef.field] = val;
+                        return true;
+                    }""")
+                    _month_fmt = "x ? parseFloat(x).toFixed(1) : '0.0'"
+
                 for m in _MS:
-                    gb.configure_column(m, type=["numericColumn"], valueFormatter="x ? x.toFixed(1) : '0.0'", minWidth=52, maxWidth=68,
-                        editable=JsCode("function(p){ return !p.data['_is_sub']; }"))
+                    col_kwargs = dict(
+                        type=["numericColumn"],
+                        cellStyle={"textAlign": "right"},
+                        valueFormatter=_month_fmt,
+                        minWidth=52, maxWidth=68,
+                        editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
+                        valueSetter=_month_valueSetter,
+                    )
+                    if _month_valueGetter:
+                        col_kwargs["valueGetter"] = _month_valueGetter
+                    gb.configure_column(m, **col_kwargs)
                 gb.configure_column("_rate", header_name="Rate (£/hr)", type=["numericColumn"],
                     minWidth=80, maxWidth=100,
                     editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
@@ -2201,6 +2296,7 @@ with tab_sow:
                     sched_df,
                     gridOptions=gb.build(),
                     allow_unsafe_jscode=True,
+
                     update_mode="MODEL_CHANGED",
                     fit_columns_on_grid_load=True,
                     height=len(sched_df) * 35 + 58,
@@ -2248,42 +2344,6 @@ with tab_sow:
                         save_sow_schedule(schedule)
                     except Exception:
                         pass
-                st.markdown("#### Monthly Hours — All Projects")
-                chart_rows = []
-                for proj in projects:
-                    p_rows = sow_df[sow_df["Project"] == proj]
-                    p_role_totals = p_rows.groupby("Role")["Total Hours"].sum()
-                    p_saved = schedule.get(proj, {})
-                    p_active = p_saved.get("_active_months", _MS)
-                    p_n = max(len(p_active), 1)
-                    for role, total_hrs in p_role_totals.items():
-                        for m in _MS:
-                            if proj == sel_proj:
-                                match = edited_df[edited_df["Role"] == role]
-                                hrs = float(match[m].values[0]) if not match.empty else 0.0
-                            elif role in p_saved and m in p_saved[role]:
-                                hrs = p_saved[role][m]
-                            else:
-                                hrs = round(total_hrs / p_n, 1) if m in p_active else 0.0
-                            dept_match = p_rows[p_rows["Role"] == role]["Department"]
-                            dept = dept_match.iloc[0] if not dept_match.empty else "Other"
-                            chart_rows.append({"Month": m, "Department": dept, "Hours": hrs})
-                if chart_rows:
-                    chart_df = pd.DataFrame(chart_rows)
-                    chart_agg = chart_df.groupby(["Month", "Department"])["Hours"].sum().reset_index()
-                    chart_agg["_ord"] = chart_agg["Month"].map({m: i for i, m in enumerate(_MS)})
-                    chart_agg = chart_agg.sort_values("_ord").drop(columns="_ord")
-                    fig_sched = px.bar(
-                        chart_agg, x="Month", y="Hours", color="Department",
-                        category_orders={"Month": _MS},
-                        color_discrete_sequence=px.colors.qualitative.Pastel,
-                    )
-                    fig_sched.update_layout(
-                        plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                        font_color="#ffffff", legend_title_text="Department",
-                        margin=dict(t=20, b=20),
-                    )
-                    st.plotly_chart(fig_sched, use_container_width=True)
 
 
 # ── Floating AI Chat ──────────────────────────────────────────────────────────
@@ -2295,7 +2355,9 @@ _CHAT_TOOLS = [
         "description": (
             "Update the monthly hour allocations for one or more roles in a specific SoW project. "
             "Use when the user asks to change, redistribute, or split hours across months. "
-            "Only set the months that should change; omit months that stay the same."
+            "Only set the months that should change; omit months that stay the same. "
+            "IMPORTANT: Always include ALL roles to update in a SINGLE call — never call this tool "
+            "multiple times for the same project. Put every role in the updates array at once."
         ),
         "input_schema": {
             "type": "object",
@@ -2432,6 +2494,9 @@ def _chat_popup():
             "finance dashboard. You help the team understand their financial data and can make changes "
             "to the monthly schedule when asked. When updating schedules, confirm what you changed. "
             "Be concise and direct. Format numbers clearly.\n\n"
+            "IMPORTANT — always batch all role updates for a project into a SINGLE tool call. "
+            "The 'updates' array accepts all roles at once — never make multiple tool calls for "
+            "the same project. One call with all roles is always correct.\n\n"
             "IMPORTANT — month range interpretation: when the user says 'between X and Y' or "
             "'from X to Y' or 'across X to Y', always treat this as the full inclusive range of "
             "consecutive months. For example, 'between Jan and Apr' means Jan, Feb, Mar, Apr — "
