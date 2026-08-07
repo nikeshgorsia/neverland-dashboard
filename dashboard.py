@@ -2044,7 +2044,10 @@ with tab_sow:
                 n_active = 12
                 sched_rows = []
                 saved_proj = schedule.get(sel_proj, {})
+                total_overrides = saved_proj.get("_total_overrides", {})
                 for role, total_hrs in role_totals.items():
+                    # Use saved override if present, else parsed value
+                    total_hrs = float(total_overrides.get(role, total_hrs))
                     row = {"Role": role, "_dept": role_dept.get(role, "Other"), "_is_sub": False}
                     if role in saved_proj and any(m in saved_proj[role] for m in _MS):
                         for m in _MS:
@@ -2100,7 +2103,8 @@ with tab_sow:
                             return {borderRight:'1px solid #555'};
                     }"""))
                 gb.configure_column("Role", minWidth=160)
-                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90)
+                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90,
+                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"))
                 gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})", minWidth=90, maxWidth=110)
                 gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=85, maxWidth=105,
                     cellStyle=JsCode("""function(p){
@@ -2144,6 +2148,15 @@ with tab_sow:
 
                 # Auto-save whenever values differ from what's persisted
                 new_proj_schedule = {"_active_months": active_months}
+                # Save SoW Total overrides where user changed from parsed value
+                new_overrides = {}
+                for _, row in edited_df.iterrows():
+                    parsed_total = round(float(role_totals.get(row["Role"], 0)), 1)
+                    edited_total = round(float(pd.to_numeric(row["SoW Total"], errors="coerce") or 0), 1)
+                    if edited_total != parsed_total:
+                        new_overrides[row["Role"]] = edited_total
+                if new_overrides:
+                    new_proj_schedule["_total_overrides"] = new_overrides
                 for _, row in edited_df.iterrows():
                     new_proj_schedule[row["Role"]] = {m: float(row[m]) for m in _MS}
                 if schedule.get(sel_proj) != new_proj_schedule:
