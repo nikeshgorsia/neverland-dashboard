@@ -2059,49 +2059,42 @@ with tab_sow:
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     sched_rows.append(row)
                 sched_df = pd.DataFrame(sched_rows)
-                col_config = {
-                    "Role":         st.column_config.TextColumn("Role", disabled=True),
-                    "SoW Total":    st.column_config.NumberColumn("SoW Total", disabled=True, format="%.1f"),
-                    "SoW Total (£)": st.column_config.NumberColumn("SoW Total (£)", disabled=True, format="£%.0f"),
-                    "Scheduled":    st.column_config.NumberColumn("Scheduled ∑", disabled=True, format="%.1f"),
-                }
+
+                # ── Summary table (read-only, styled) ────────────────────────
+                summary_df = sched_df[["Role", "SoW Total", "SoW Total (£)", "Scheduled"]].copy()
+                summary_df = summary_df.rename(columns={
+                    "SoW Total": "Hrs Scoped",
+                    "SoW Total (£)": "Fee Scoped (£)",
+                    "Scheduled": "Scheduled ∑",
+                })
+
+                def _style_sched(row):
+                    color = "color: #dc2626" if row["Scheduled ∑"] > row["Hrs Scoped"] else ""
+                    return ["", "", "", color]
+
+                styled = (
+                    summary_df.style
+                    .apply(_style_sched, axis=1)
+                    .format({"Hrs Scoped": "{:.1f}", "Fee Scoped (£)": "£{:.0f}", "Scheduled ∑": "{:.1f}"})
+                )
+                st.dataframe(styled, use_container_width=True, hide_index=True)
+
+                # ── Editable month grid ───────────────────────────────────────
+                month_df = sched_df[["Role"] + _MS].copy()
+                month_config = {"Role": st.column_config.TextColumn("Role", disabled=True)}
                 for m in _MS:
-                    col_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
-                col_order = ["Role", "SoW Total", "SoW Total (£)", "Scheduled"] + _MS
-                sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
-                # col-id in AG Grid = DataFrame column name (not the display label)
-                st.markdown("""
-                <style>
-                .ag-cell[col-id="SoW Total"],
-                .ag-header-cell[col-id="SoW Total"] {
-                    background-color: rgba(99,102,241,0.18) !important;
-                    background: rgba(99,102,241,0.18) !important;
-                }
-                .ag-cell[col-id="SoW Total (£)"],
-                .ag-header-cell[col-id="SoW Total (£)"] {
-                    background-color: rgba(236,72,153,0.18) !important;
-                    background: rgba(236,72,153,0.18) !important;
-                }
-                .ag-cell[col-id="Scheduled"],
-                .ag-header-cell[col-id="Scheduled"] {
-                    background-color: rgba(16,185,129,0.18) !important;
-                    background: rgba(16,185,129,0.18) !important;
-                }
-                </style>""", unsafe_allow_html=True)
+                    month_config[m] = st.column_config.NumberColumn(m, format="%.1f", min_value=0.0)
                 edited_df = st.data_editor(
-                    sched_df, column_config=col_config,
+                    month_df, column_config=month_config,
                     use_container_width=True, hide_index=True,
                     key=f"sched_editor_{sel_proj}",
                 )
+                # merge edits back so auto-save logic can use edited_df["Scheduled"] / sow cols
+                edited_df = edited_df.merge(
+                    sched_df[["Role", "SoW Total", "SoW Total (£)"]],
+                    on="Role", how="left",
+                )
                 edited_df["Scheduled"] = edited_df[_MS].sum(axis=1).round(1)
-
-                over = edited_df[edited_df["Scheduled"] > edited_df["SoW Total"]]
-                if not over.empty:
-                    msgs = ", ".join(
-                        f"**{r['Role']}** ({r['Scheduled']}h scheduled vs {r['SoW Total']}h scoped)"
-                        for _, r in over.iterrows()
-                    )
-                    st.error(f"⚠️ Over-scheduled: {msgs}")
 
                 # Auto-save whenever values differ from what's persisted
                 new_proj_schedule = {"_active_months": active_months}
