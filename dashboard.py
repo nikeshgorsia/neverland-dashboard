@@ -2108,7 +2108,7 @@ with tab_sow:
                     suppressMovableColumns=True,
                     getRowStyle=JsCode("""function(p){
                         if(p.data && p.data['_is_grand'])
-                            return {fontWeight:'700', background:'#1A1A1A', color:'#FFFFFF'};
+                            return {fontWeight:'700', fontSize:'15px', background:'#1A1A1A', color:'#FFFFFF'};
                         if(p.data && p.data['_is_sub'])
                             return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
                     }"""),
