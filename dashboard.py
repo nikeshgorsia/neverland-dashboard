@@ -1684,9 +1684,13 @@ with tab_sow:
             if hrs <= 0:
                 continue
             dept = current_dept
-            if dept == "Client Service" and "strategy" in a_val.lower():
+            # Role-level overrides (take precedence over dept header)
+            _role_lower = a_val.strip().lower()
+            if "account" in _role_lower and "strategy" not in _role_lower:
+                dept = "Client Service"
+            elif dept == "Client Service" and "strategy" in _role_lower:
                 dept = "Strategy"
-            if a_val.strip().lower() in {"ceo", "ccpo"}:
+            if _role_lower in {"ceo", "ccpo"}:
                 dept = "Management"
             rows_out.append({
                 "Project":     project_name,
@@ -1807,12 +1811,14 @@ with tab_sow:
             dept = dept_str if dept_str else current_dept
             _DEPT_RENAME = {"Account": "Client Service", "Total Account": "Client Service"}
             dept = _DEPT_RENAME.get(dept, dept)
-            # Roles with "Strategy" in their title belong in Strategy, not Client Service
-            if dept == "Client Service" and "strategy" in role_str.lower():
+            # Role-level overrides (take precedence over dept header)
+            _role_lower = role_str.strip().lower()
+            if "account" in _role_lower and "strategy" not in _role_lower:
+                dept = "Client Service"
+            elif dept == "Client Service" and "strategy" in _role_lower:
                 dept = "Strategy"
             # CEO and CCPO always go under Management
-            _MANAGEMENT_ROLES = {"ceo", "ccpo"}
-            if any(kw == role_str.strip().lower() for kw in _MANAGEMENT_ROLES):
+            if _role_lower in {"ceo", "ccpo"}:
                 dept = "Management"
             rows_out.append({
                 "Project":      project_name,
