@@ -2322,9 +2322,7 @@ with tab_sow:
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
                 gb.configure_column("_gap", header_name="", editable=False, minWidth=24, maxWidth=24,
                     cellRenderer=JsCode("""function(p){
-                        var div=document.createElement('div');
-                        div.style.cssText='position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;background:#ffffff;';
-                        return div;
+                        return '<div style="position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;background:#ffffff;"></div>';
                     }"""))
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
