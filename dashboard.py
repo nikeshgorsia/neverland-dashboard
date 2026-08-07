@@ -2087,7 +2087,11 @@ with tab_sow:
 
                 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
                 gb = GridOptionsBuilder.from_dataframe(sched_df)
-                gb.configure_default_column(editable=False, resizable=True)
+                gb.configure_default_column(editable=False, resizable=True,
+                    cellStyle=JsCode("""function(p){
+                        if(p.data && p.data['_is_grand'])
+                            return {borderRight:'1px solid #555'};
+                    }"""))
                 gb.configure_column("Role", minWidth=160)
                 gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90)
                 gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})", minWidth=90, maxWidth=110)
@@ -2108,7 +2112,7 @@ with tab_sow:
                     suppressMovableColumns=True,
                     getRowStyle=JsCode("""function(p){
                         if(p.data && p.data['_is_grand'])
-                            return {fontWeight:'700', fontSize:'15px', background:'#1A1A1A', color:'#FFFFFF'};
+                            return {fontWeight:'700', fontSize:'15px', background:'#1A1A1A', color:'#FFFFFF', borderTop:'2px solid #555', borderBottom:'2px solid #555'};
                         if(p.data && p.data['_is_sub'])
                             return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
                     }"""),
