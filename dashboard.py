@@ -2175,6 +2175,7 @@ with tab_sow:
                 gb.configure_column("_dept", hide=True)
                 gb.configure_grid_options(
                     rowHeight=35,
+                    singleClickEdit=True,
                     suppressMovableColumns=True,
                     getRowStyle=JsCode("""function(p){
                         if(p.data && p.data['_is_grand'])
@@ -2187,7 +2188,7 @@ with tab_sow:
                     sched_df,
                     gridOptions=gb.build(),
                     allow_unsafe_jscode=True,
-                    update_mode="VALUE_CHANGED",
+                    update_mode="MODEL_CHANGED",
                     fit_columns_on_grid_load=True,
                     height=len(sched_df) * 35 + 58,
                     key=f"sched_editor_{sel_proj}",
