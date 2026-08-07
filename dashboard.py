@@ -2350,6 +2350,10 @@ def _chat_popup():
             "finance dashboard. You help the team understand their financial data and can make changes "
             "to the monthly schedule when asked. When updating schedules, confirm what you changed. "
             "Be concise and direct. Format numbers clearly.\n\n"
+            "IMPORTANT — month range interpretation: when the user says 'between X and Y' or "
+            "'from X to Y' or 'across X to Y', always treat this as the full inclusive range of "
+            "consecutive months. For example, 'between Jan and Apr' means Jan, Feb, Mar, Apr — "
+            "all four months, not just Jan and Apr. Zero out all months outside the range.\n\n"
             "Current dashboard data:\n" + _build_chat_context()
         )
         try:
