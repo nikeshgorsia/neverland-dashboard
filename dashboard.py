@@ -2063,7 +2063,7 @@ with tab_sow:
                 # Mark over-budget rows with a sentinel so JS can colour them red
                 def _fmt_sched(row):
                     val = f"{row['Scheduled']:.1f}"
-                    return f"⚠{val}" if row["Scheduled"] > row["SoW Total"] else val
+                    return f"​{val}" if row["Scheduled"] > row["SoW Total"] else val
 
                 display_df = sched_df.copy()
                 display_df["Scheduled"] = sched_df.apply(_fmt_sched, axis=1)
@@ -2074,12 +2074,12 @@ with tab_sow:
                   function applyRed(){
                     document.querySelectorAll('.ag-cell[col-id="Scheduled"]').forEach(function(cell){
                       var t = cell.innerText || '';
-                      if(t.charAt(0)==='⚠'){
+                      if(t.charCodeAt(0)===8203){
                         cell.style.color='#dc2626';
                         cell.style.fontWeight='600';
                         var span = cell.querySelector('.ag-cell-value') || cell;
                         span.childNodes.forEach(function(n){
-                          if(n.nodeType===3) n.textContent=n.textContent.replace('⚠','');
+                          if(n.nodeType===3) n.textContent=n.textContent.replace('​','');
                         });
                       } else {
                         cell.style.color='';
