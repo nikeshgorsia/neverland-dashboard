@@ -1428,5 +1428,105 @@
     "Total Hours": 8.0,
     "Total Fee": 800.0,
     "_source": "AGE UK_Omaze.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Business Director",
+    "Hourly Rate": 140.0,
+    "Total Hours": 7.0,
+    "Total Fee": 980.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Client Service",
+    "Role": "Account Manager",
+    "Hourly Rate": 68.0,
+    "Total Hours": 14.0,
+    "Total Fee": 952.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Head of Strategy",
+    "Hourly Rate": 200.0,
+    "Total Hours": 6.0,
+    "Total Fee": 1200.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Strategy",
+    "Role": "Strategist",
+    "Hourly Rate": 88.0,
+    "Total Hours": 16.0,
+    "Total Fee": 1408.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Creative Director",
+    "Hourly Rate": 200.0,
+    "Total Hours": 5.0,
+    "Total Fee": 1000.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (AD)",
+    "Hourly Rate": 136.0,
+    "Total Hours": 14.0,
+    "Total Fee": 1904.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Senior Creative (CW)",
+    "Hourly Rate": 136.0,
+    "Total Hours": 14.0,
+    "Total Fee": 1904.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Videographer / Editor",
+    "Hourly Rate": 96.0,
+    "Total Hours": 24.0,
+    "Total Fee": 2304.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Creative",
+    "Role": "Head of Design",
+    "Hourly Rate": 200.0,
+    "Total Hours": 1.0,
+    "Total Fee": 200.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
+  },
+  {
+    "Project": "AGE UK_Dunelm_Sprint_2_26.05.26",
+    "Client": "",
+    "Department": "Production",
+    "Role": "Designer",
+    "Hourly Rate": 100.0,
+    "Total Hours": 8.0,
+    "Total Fee": 800.0,
+    "_source": "AGE UK_Dunelm_Sprint_2_26.05.26.xlsx"
   }
 ]
