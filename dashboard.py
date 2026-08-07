@@ -2107,8 +2107,9 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
+                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %", "_gap"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
                 sched_df["Sched %"] = 0.0
+                sched_df["_gap"] = ""
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
@@ -2319,6 +2320,8 @@ with tab_sow:
                     editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
                     valueFormatter="p.data['_is_sub']||p.data['_is_grand'] ? '' : '£'+x",
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
+                gb.configure_column("_gap", header_name="", editable=False, minWidth=20, maxWidth=20,
+                    cellStyle={"borderLeft": "2px solid #ddd", "borderRight": "none", "background": "#f8f8f8"})
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_dept", hide=True)
