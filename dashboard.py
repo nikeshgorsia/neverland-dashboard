@@ -2060,13 +2060,38 @@ with tab_sow:
                     sched_rows.append(row)
                 sched_df = pd.DataFrame(sched_rows)
 
-                # Format Scheduled as text with 🔴 prefix when it exceeds SoW Total
+                # Mark over-budget rows with a sentinel so JS can colour them red
                 def _fmt_sched(row):
                     val = f"{row['Scheduled']:.1f}"
-                    return f"🔴 {val}" if row["Scheduled"] > row["SoW Total"] else val
+                    return f"⚠{val}" if row["Scheduled"] > row["SoW Total"] else val
 
                 display_df = sched_df.copy()
                 display_df["Scheduled"] = sched_df.apply(_fmt_sched, axis=1)
+                # JS: strip sentinel, colour text red; MutationObserver handles rerenders
+                st.markdown("""
+                <script>
+                (function(){
+                  function applyRed(){
+                    document.querySelectorAll('.ag-cell[col-id="Scheduled"]').forEach(function(cell){
+                      var t = cell.innerText || '';
+                      if(t.charAt(0)==='⚠'){
+                        cell.style.color='#dc2626';
+                        cell.style.fontWeight='600';
+                        var span = cell.querySelector('.ag-cell-value') || cell;
+                        span.childNodes.forEach(function(n){
+                          if(n.nodeType===3) n.textContent=n.textContent.replace('⚠','');
+                        });
+                      } else {
+                        cell.style.color='';
+                        cell.style.fontWeight='';
+                      }
+                    });
+                  }
+                  var obs = new MutationObserver(applyRed);
+                  obs.observe(document.body,{childList:true,subtree:true});
+                  applyRed();
+                })();
+                </script>""", unsafe_allow_html=True)
 
                 col_config = {
                     "Role":          st.column_config.TextColumn("Role", disabled=True),
