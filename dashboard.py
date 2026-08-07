@@ -2060,7 +2060,12 @@ with tab_sow:
                     row["Scheduled"] = round(sum(row[m] for m in _MS), 1)
                     row["_rate"] = float(role_rate.get(role, 0))
                     sched_rows.append(row)
-                sched_df = pd.DataFrame(sched_rows).sort_values(["_dept", "_rate"], ascending=[True, False])
+                _DEPT_ORDER = ["Management", "Client Service", "Strategy", "Creative", "Production"]
+                sched_df = pd.DataFrame(sched_rows)
+                sched_df["_dept_rank"] = sched_df["_dept"].apply(
+                    lambda d: _DEPT_ORDER.index(d) if d in _DEPT_ORDER else len(_DEPT_ORDER)
+                )
+                sched_df = sched_df.sort_values(["_dept_rank", "_rate"], ascending=[True, False]).drop(columns=["_dept_rank"])
 
                 # Insert a subtotal row after each department group
                 final_rows = []
