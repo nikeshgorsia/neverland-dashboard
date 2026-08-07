@@ -2079,9 +2079,9 @@ with tab_sow:
                 gb = GridOptionsBuilder.from_dataframe(sched_df)
                 gb.configure_default_column(editable=False, resizable=True)
                 gb.configure_column("Role", minWidth=160)
-                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=90, maxWidth=110)
-                gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})", minWidth=110, maxWidth=130)
-                gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=100, maxWidth=120,
+                gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=75, maxWidth=90)
+                gb.configure_column("SoW Total (£)", header_name="SoW Total (£)", type=["numericColumn"], valueFormatter="'£'+x.toLocaleString('en-GB',{maximumFractionDigits:0})", minWidth=90, maxWidth=110)
+                gb.configure_column("Scheduled", header_name="Scheduled ∑", type=["numericColumn"], valueFormatter="x.toFixed(1)", minWidth=85, maxWidth=105,
                     cellStyle=JsCode("""function(p){
                         if(p.data['_is_sub']) return {fontWeight:'700'};
                         return p.value > p.data['SoW Total']
