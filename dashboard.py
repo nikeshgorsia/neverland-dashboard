@@ -354,6 +354,45 @@ with st.sidebar:
         selected_clients = []
 
 
+@st.dialog("Set monthly split for new SoW", width="large")
+def _sow_split_dialog(proj_name, total_hours, source_name):
+    _MS_D = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    st.markdown(f"**{proj_name}** — {total_hours:,.0f} total hours")
+    st.caption("Enter the % of hours for each month. Blank = 0%. Total must equal 100%.")
+    r1 = st.columns(6)
+    r2 = st.columns(6)
+    pcts = {}
+    for i, m in enumerate(_MS_D):
+        col = r1[i] if i < 6 else r2[i - 6]
+        pcts[m] = col.number_input(m, min_value=0.0, max_value=100.0, value=0.0,
+                                   step=0.5, key=f"split_{source_name}_{m}", label_visibility="visible")
+    total_pct = sum(pcts.values())
+    if total_pct > 0:
+        st.caption(f"Total: **{total_pct:.1f}%** {'✓' if abs(total_pct - 100) < 0.1 else '— must equal 100%'}")
+    c1, c2 = st.columns(2)
+    if c1.button("Apply split", type="primary", disabled=abs(total_pct - 100) >= 0.1):
+        if "sow_schedule" not in st.session_state:
+            st.session_state["sow_schedule"] = {}
+        schedule = st.session_state["sow_schedule"]
+        proj_sched = {"_active_months": [m for m, p in pcts.items() if p > 0]}
+        # Load roles for this project
+        _sow = st.session_state.get("sow_data", pd.DataFrame())
+        _proj_rows = _sow[_sow["_source"] == source_name]
+        _role_totals = _proj_rows.groupby("Role")["Total Hours"].sum()
+        for role, hrs in _role_totals.items():
+            proj_sched[role] = {m: round(hrs * pcts[m] / 100, 1) for m in _MS_D}
+        schedule[proj_name] = proj_sched
+        st.session_state["sow_schedule"] = schedule
+        try:
+            from sharepoint_sync import save_sow_schedule
+            save_sow_schedule(schedule)
+        except Exception:
+            pass
+        st.rerun()
+    if c2.button("Skip — use even split"):
+        st.rerun()
+
+
 @st.dialog("Month Breakdown", width="large")
 def show_month_breakdown(month, pipeline, section, selected_clients, token):
     st.subheader(f"{month} — Revenue by Client & Project")
@@ -1883,11 +1922,17 @@ with tab_sow:
                 fee = df_parsed["Total Fee"].sum()
                 st.success(f"Loaded **{uf.name}** — {n} roles, {hrs:,.0f} hours, £{fee:,.0f} total fee")
                 added = True
+                proj_name = df_parsed["Project"].iloc[0] if not df_parsed.empty else uf.name
+                st.session_state["_pending_split"] = {"proj": proj_name, "hrs": hrs, "src": uf.name}
         if added:
             try:
                 save_sow_data(st.session_state["sow_data"])
             except Exception as _e:
                 st.warning(f"Could not save SoW data: {_e}")
+
+    if "_pending_split" in st.session_state:
+        _ps = st.session_state.pop("_pending_split")
+        _sow_split_dialog(_ps["proj"], _ps["hrs"], _ps["src"])
 
     sow_df = st.session_state["sow_data"].copy()
     # ensure numeric
