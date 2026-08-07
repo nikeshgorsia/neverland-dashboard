@@ -2321,7 +2321,11 @@ with tab_sow:
                     valueFormatter="p.data['_is_sub']||p.data['_is_grand'] ? '' : '£'+x",
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
                 gb.configure_column("_gap", header_name="", editable=False, minWidth=20, maxWidth=20,
-                    cellStyle={"background": "#ffffff", "border": "none", "borderLeft": "none", "borderRight": "none", "borderTop": "none", "borderBottom": "none"})
+                    cellStyle=JsCode("""function(p){
+                        return {background:'#ffffff', borderLeft:'2px solid #ffffff',
+                                borderRight:'2px solid #ffffff', borderTop:'2px solid #ffffff',
+                                borderBottom:'2px solid #ffffff', outline:'none'};
+                    }"""))
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_dept", hide=True)
