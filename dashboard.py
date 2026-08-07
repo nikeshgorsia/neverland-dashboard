@@ -2107,9 +2107,8 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %", "_gap"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
+                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
                 sched_df["Sched %"] = 0.0
-                sched_df["_gap"] = ""
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
@@ -2304,9 +2303,10 @@ with tab_sow:
                     _month_fmt = "x ? parseFloat(x).toFixed(1) : '0.0'"
 
                 for m in _MS:
+                    _left_border = "3px solid #cbd5e1" if m == "Jan" else None
                     col_kwargs = dict(
                         type=["numericColumn"],
-                        cellStyle={"textAlign": "right"},
+                        cellStyle={"textAlign": "right", "borderLeft": _left_border} if _left_border else {"textAlign": "right"},
                         valueFormatter=_month_fmt,
                         minWidth=52, maxWidth=68,
                         editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
@@ -2320,10 +2320,6 @@ with tab_sow:
                     editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
                     valueFormatter="p.data['_is_sub']||p.data['_is_grand'] ? '' : '£'+x",
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
-                gb.configure_column("_gap", header_name="", editable=False, minWidth=24, maxWidth=24,
-                    cellRenderer=JsCode("""function(p){
-                        return '<div style="position:absolute;top:-1px;left:-1px;right:-1px;bottom:-1px;background:#ffffff;"></div>';
-                    }"""))
                 gb.configure_column("_is_sub", hide=True)
                 gb.configure_column("_is_grand", hide=True)
                 gb.configure_column("_dept", hide=True)
