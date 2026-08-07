@@ -2362,42 +2362,35 @@ def _chat_popup():
                 with st.chat_message("user"):
                     st.markdown(_user_input)
                 with st.chat_message("assistant"):
-                    _placeholder = st.empty()
-
-                    # Agentic loop: handle tool calls, then stream final reply
-                    _messages = list(_history)
                     _final_text = ""
-                    while True:
-                        with _placeholder.container():
-                            with st.spinner("Thinking…"):
-                                _resp = _client.messages.create(
-                                    model="claude-sonnet-5",
-                                    max_tokens=2048,
-                                    system=_system_prompt,
-                                    tools=_CHAT_TOOLS,
-                                    messages=_messages,
-                                )
-
-                        if _resp.stop_reason == "tool_use":
-                            _tool_results = []
-                            for _block in _resp.content:
-                                if _block.type == "tool_use":
-                                    with _placeholder.container():
-                                        with st.spinner(f"Updating schedule…"):
-                                            _result = _execute_chat_tool(_block.name, _block.input)
-                                    _tool_results.append({
-                                        "type": "tool_result",
-                                        "tool_use_id": _block.id,
-                                        "content": _result,
-                                    })
-                            _messages.append({"role": "assistant", "content": _resp.content})
-                            _messages.append({"role": "user", "content": _tool_results})
-                        else:
-                            for _block in _resp.content:
-                                if hasattr(_block, "text"):
-                                    _final_text += _block.text
-                            _placeholder.markdown(_final_text)
-                            break
+                    _messages = list(_history)
+                    with st.spinner("Thinking…"):
+                        while True:
+                            _resp = _client.messages.create(
+                                model="claude-sonnet-5",
+                                max_tokens=2048,
+                                system=_system_prompt,
+                                tools=_CHAT_TOOLS,
+                                messages=_messages,
+                            )
+                            if _resp.stop_reason == "tool_use":
+                                _tool_results = []
+                                for _block in _resp.content:
+                                    if _block.type == "tool_use":
+                                        _result = _execute_chat_tool(_block.name, _block.input)
+                                        _tool_results.append({
+                                            "type": "tool_result",
+                                            "tool_use_id": _block.id,
+                                            "content": _result,
+                                        })
+                                _messages.append({"role": "assistant", "content": _resp.content})
+                                _messages.append({"role": "user", "content": _tool_results})
+                            else:
+                                for _block in _resp.content:
+                                    if hasattr(_block, "text"):
+                                        _final_text += _block.text
+                                break
+                    st.markdown(_final_text)
 
             st.session_state["chat_messages"].append({"role": "assistant", "content": _final_text})
         except Exception as _e:
