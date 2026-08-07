@@ -2264,15 +2264,25 @@ with tab_sow:
                 for m in _MS:
                     grand[m] = role_only[m].sum()
                 sched_df = pd.concat([sched_df, pd.DataFrame([grand])], ignore_index=True)
-                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %"] + _MS + ["_is_sub", "_is_grand", "_dept", "_orig_role"]
+                # Grand total £ row — sum of (hours × rate) per month across all roles
+                _fee_row = {"Role": "Grand Total £", "_dept": "", "_is_sub": False, "_is_grand": False, "_is_grand_fee": True,
+                            "SoW Total": None, "SoW Total (£)": None, "Scheduled": None}
+                for m in _MS:
+                    _fee_row[m] = round(sum(
+                        float(r[m] or 0) * float(r.get("_rate") or 0)
+                        for _, r in role_only.iterrows()
+                    ), 0)
+                sched_df = pd.concat([sched_df, pd.DataFrame([_fee_row])], ignore_index=True)
+                col_order = ["Role", "_rate", "SoW Total", "SoW Total (£)", "Scheduled", "Sched %"] + _MS + ["_is_sub", "_is_grand", "_is_grand_fee", "_dept", "_orig_role"]
                 sched_df["Sched %"] = 0.0
                 sched_df = sched_df[[c for c in col_order if c in sched_df.columns]]
                 sched_df["_is_grand"] = sched_df["_is_grand"].fillna(False)
+                sched_df["_is_grand_fee"] = sched_df["_is_grand_fee"].fillna(False)
                 sched_df["_rate"] = sched_df["_rate"].fillna(0)
 
                 _is_pct = st.session_state.get("sched_display_mode_v2", "Hours") == "% of SoW Total"
 
-                _role_df = sched_df[~sched_df["_is_sub"] & ~sched_df["_is_grand"]][["Role", "_dept"]].copy()
+                _role_df = sched_df[~sched_df["_is_sub"] & ~sched_df["_is_grand"] & ~sched_df["_is_grand_fee"]][["Role", "_dept"]].copy()
                 _dept_role_map = {}
                 for _, _r in _role_df.iterrows():
                     _dept_role_map.setdefault(_r["_dept"], []).append(_r["Role"])
@@ -2343,13 +2353,14 @@ with tab_sow:
                 gb.configure_column("_orig_role", hide=True)
                 _MS_JS = str(_MS)  # e.g. "['Jan','Feb',...]"
                 gb.configure_column("SoW Total", header_name="SoW Total", type=["numericColumn"], minWidth=75, maxWidth=90,
-                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
+                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand'] && !p.data['_is_grand_fee']; }"),
                     valueGetter=JsCode("""function(p){
                         if(!p.data) return 0;
-                        if(!p.data['_is_sub'] && !p.data['_is_grand']) return p.data['SoW Total']||0;
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']&&!p.data['_is_grand_fee']) return p.data['SoW Total']||0;
+                        if(p.data['_is_grand_fee']) return null;
                         var dept=p.data['_dept'], total=0;
                         p.api.forEachNode(function(n){
-                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&!n.data['_is_grand_fee']&&
                                (p.data['_is_grand']||n.data['_dept']===dept))
                                 total+=parseFloat(n.data['SoW Total'])||0;
                         }); return Math.round(total*10)/10;
@@ -2362,10 +2373,11 @@ with tab_sow:
                             var r=d['_rate']||0;
                             return r>0?Math.round((d['SoW Total']||0)*r):(d['SoW Total (£)']||0);
                         }
-                        if(!p.data['_is_sub']&&!p.data['_is_grand']) return roleVal(p.data);
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']&&!p.data['_is_grand_fee']) return roleVal(p.data);
+                        if(p.data['_is_grand_fee']) return null;
                         var dept=p.data['_dept'],total=0;
                         p.api.forEachNode(function(n){
-                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&!n.data['_is_grand_fee']&&
                                (p.data['_is_grand']||n.data['_dept']===dept))
                                 total+=roleVal(n.data);
                         }); return total;
@@ -2376,17 +2388,26 @@ with tab_sow:
                         if(!p.data) return 0;
                         var MS=""" + str(_MS) + """;
                         function roleHrs(d){ var t=0; MS.forEach(function(m){t+=parseFloat(d[m])||0;}); return Math.round(t*10)/10; }
-                        if(!p.data['_is_sub']&&!p.data['_is_grand']) return roleHrs(p.data);
+                        if(!p.data['_is_sub']&&!p.data['_is_grand']&&!p.data['_is_grand_fee']) return roleHrs(p.data);
+                        if(p.data['_is_grand_fee']){
+                            var MS2=""" + str(_MS) + """; var feeTotal=0;
+                            p.api.forEachNode(function(n){
+                                if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&!n.data['_is_grand_fee']){
+                                    var rate=parseFloat(n.data['_rate'])||0;
+                                    MS2.forEach(function(m){feeTotal+=((parseFloat(n.data[m])||0)*rate);});
+                                }
+                            }); return Math.round(feeTotal);
+                        }
                         var dept=p.data['_dept'],total=0;
                         p.api.forEachNode(function(n){
-                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                            if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&!n.data['_is_grand_fee']&&
                                (p.data['_is_grand']||n.data['_dept']===dept))
                                 total+=roleHrs(n.data);
                         }); return Math.round(total*10)/10;
                     }"""),
-                    valueFormatter="x.toFixed(1)",
+                    valueFormatter=JsCode("function(p){ if(p.node&&p.node.data&&p.node.data['_is_grand_fee']) return p.value!=null?'£'+Math.round(p.value).toLocaleString():'£0'; return p.value!=null?p.value.toFixed(1):'0.0'; }"),
                     cellStyle=JsCode("""function(p){
-                        if(p.data['_is_sub']||p.data['_is_grand']) return {fontWeight:'700'};
+                        if(p.data['_is_sub']||p.data['_is_grand']||p.data['_is_grand_fee']) return {fontWeight:'700'};
                         var MS=""" + str(_MS) + """;
                         var sched=0; MS.forEach(function(m){sched+=parseFloat(p.data[m])||0;});
                         return sched > (p.data['SoW Total']||0)
@@ -2399,13 +2420,14 @@ with tab_sow:
                         var MS=""" + str(_MS) + """;
                         function roleHrs(d){ var t=0; MS.forEach(function(m){t+=parseFloat(d[m])||0;}); return t; }
                         var sched, sow;
+                        if(p.data['_is_grand_fee']) return null;
                         if(!p.data['_is_sub']&&!p.data['_is_grand']){
                             sched=roleHrs(p.data);
                             sow=parseFloat(p.data['SoW Total'])||0;
                         } else {
                             var dept=p.data['_dept']; sched=0; sow=0;
                             p.api.forEachNode(function(n){
-                                if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&
+                                if(n.data&&!n.data['_is_sub']&&!n.data['_is_grand']&&!n.data['_is_grand_fee']&&
                                    (p.data['_is_grand']||n.data['_dept']===dept)){
                                     sched+=roleHrs(n.data);
                                     sow+=parseFloat(n.data['SoW Total'])||0;
@@ -2426,10 +2448,11 @@ with tab_sow:
                     _month_valueGetter = JsCode("""function(p) {
                         if (!p.data) return null;
                         var field = p.colDef.field;
+                        if (p.data['_is_grand_fee']) return null;
                         if (p.data['_is_sub'] || p.data['_is_grand']) {
                             var dept = p.data['_dept'], total = 0;
                             p.api.forEachNode(function(n) {
-                                if (n.data && !n.data['_is_sub'] && !n.data['_is_grand'] &&
+                                if (n.data && !n.data['_is_sub'] && !n.data['_is_grand'] && !n.data['_is_grand_fee'] &&
                                     (p.data['_is_grand'] || n.data['_dept'] === dept))
                                     total += parseFloat(n.data[field]) || 0;
                             });
@@ -2447,7 +2470,7 @@ with tab_sow:
                         p.data[p.colDef.field] = Math.round(pct / 100 * sow * 10) / 10;
                         return true;
                     }""")
-                    _month_fmt = "x !== null && x !== undefined ? x.toFixed(1)+'%' : '0.0%'"
+                    _month_fmt = JsCode("function(p){ if(p.node&&p.node.data&&p.node.data['_is_grand_fee']) return p.value!=null?'£'+Math.round(p.value).toLocaleString():'£0'; return p.value!==null&&p.value!==undefined?p.value.toFixed(1)+'%':'0.0%'; }")
                 else:
                     _month_valueGetter = None
                     _month_valueSetter = JsCode("""function(p) {
@@ -2457,7 +2480,7 @@ with tab_sow:
                         p.data[p.colDef.field] = val;
                         return true;
                     }""")
-                    _month_fmt = "x ? parseFloat(x).toFixed(1) : '0.0'"
+                    _month_fmt = JsCode("function(p){ if(p.node&&p.node.data&&p.node.data['_is_grand_fee']) return p.value!=null?'£'+Math.round(p.value).toLocaleString():'£0'; return p.value?parseFloat(p.value).toFixed(1):'0.0'; }")
 
                 for m in _MS:
                     _left_border = "3px solid #cbd5e1" if m == "Jan" else None
@@ -2466,7 +2489,7 @@ with tab_sow:
                         cellStyle={"textAlign": "right", "borderLeft": _left_border} if _left_border else {"textAlign": "right"},
                         valueFormatter=_month_fmt,
                         minWidth=52, maxWidth=68,
-                        editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
+                        editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand'] && !p.data['_is_grand_fee']; }"),
                         valueSetter=_month_valueSetter,
                     )
                     if _month_valueGetter:
@@ -2474,7 +2497,7 @@ with tab_sow:
                     gb.configure_column(m, **col_kwargs)
                 gb.configure_column("_rate", header_name="Rate (£/hr)", type=["numericColumn"],
                     minWidth=80, maxWidth=100,
-                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand']; }"),
+                    editable=JsCode("function(p){ return !p.data['_is_sub'] && !p.data['_is_grand'] && !p.data['_is_grand_fee']; }"),
                     valueFormatter="p.data['_is_sub']||p.data['_is_grand'] ? '' : '£'+x",
                     valueGetter=JsCode("function(p){ return (!p.data['_is_sub']&&!p.data['_is_grand']) ? (p.data['_rate']||0) : null; }"))
                 gb.configure_column("_is_sub", hide=True)
@@ -2487,6 +2510,8 @@ with tab_sow:
                     getRowStyle=JsCode("""function(p){
                         if(p.data && p.data['_is_grand'])
                             return {fontWeight:'700', fontSize:'15px', background:'#1A1A1A', color:'#FFFFFF', borderTop:'2px solid #555', borderBottom:'2px solid #555'};
+                        if(p.data && p.data['_is_grand_fee'])
+                            return {fontWeight:'700', fontSize:'13px', background:'#2d4a1e', color:'#d4f5a0', borderBottom:'2px solid #555', fontStyle:'italic'};
                         if(p.data && p.data['_is_sub'])
                             return {fontWeight:'700', background:'rgba(0,0,0,0.06)'};
                     }"""),
