@@ -2344,11 +2344,23 @@ with tab_sow:
                     sched_df,
                     gridOptions=gb.build(),
                     allow_unsafe_jscode=True,
-
                     update_mode="MODEL_CHANGED",
                     fit_columns_on_grid_load=True,
                     height=len(sched_df) * 35 + 58,
                     key=f"sched_editor_{sel_proj}",
+                    custom_css={
+                        ".ag-cell[col-id='_gap']": {
+                            "border-left": "none !important",
+                            "border-right": "none !important",
+                            "border-top": "none !important",
+                            "border-bottom": "none !important",
+                            "background-color": "#ffffff !important",
+                        },
+                        ".ag-header-cell[col-id='_gap']": {
+                            "border": "none !important",
+                            "background-color": "#ffffff !important",
+                        },
+                    }
                 )
                 edited_df = grid_resp["data"].copy()
                 # Exclude subtotal and grand total rows from save logic
