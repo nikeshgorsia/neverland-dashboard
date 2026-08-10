@@ -1931,8 +1931,39 @@
   },
   "AGE UK_Dunelm_Sprint_2_26.05.26": {
     "_active_months": [
-      "Jun"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
     ],
+    "_total_overrides": {
+      "NaN": NaN
+    },
+    "_role_name_overrides": {
+      "NaN": "Grand Total \u00a3"
+    },
+    "Business Director": {
+      "Jan": 0.0,
+      "Feb": 0.0,
+      "Mar": 0.0,
+      "Apr": 0.0,
+      "May": 0.0,
+      "Jun": 7.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
     "Account Manager": {
       "Jan": 0.0,
       "Feb": 0.0,
@@ -1947,13 +1978,27 @@
       "Nov": 0.0,
       "Dec": 0.0
     },
-    "Business Director": {
+    "Head of Strategy": {
       "Jan": 0.0,
       "Feb": 0.0,
       "Mar": 0.0,
       "Apr": 0.0,
       "May": 0.0,
-      "Jun": 7.0,
+      "Jun": 6.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
+    "Strategist": {
+      "Jan": 0.0,
+      "Feb": 0.0,
+      "Mar": 0.0,
+      "Apr": 0.0,
+      "May": 0.0,
+      "Jun": 16.0,
       "Jul": 0.0,
       "Aug": 0.0,
       "Sep": 0.0,
@@ -1975,20 +2020,6 @@
       "Nov": 0.0,
       "Dec": 0.0
     },
-    "Designer": {
-      "Jan": 0.0,
-      "Feb": 0.0,
-      "Mar": 0.0,
-      "Apr": 0.0,
-      "May": 0.0,
-      "Jun": 8.0,
-      "Jul": 0.0,
-      "Aug": 0.0,
-      "Sep": 0.0,
-      "Oct": 0.0,
-      "Nov": 0.0,
-      "Dec": 0.0
-    },
     "Head of Design": {
       "Jan": 0.0,
       "Feb": 0.0,
@@ -1996,20 +2027,6 @@
       "Apr": 0.0,
       "May": 0.0,
       "Jun": 1.0,
-      "Jul": 0.0,
-      "Aug": 0.0,
-      "Sep": 0.0,
-      "Oct": 0.0,
-      "Nov": 0.0,
-      "Dec": 0.0
-    },
-    "Head of Strategy": {
-      "Jan": 0.0,
-      "Feb": 0.0,
-      "Mar": 0.0,
-      "Apr": 0.0,
-      "May": 0.0,
-      "Jun": 6.0,
       "Jul": 0.0,
       "Aug": 0.0,
       "Sep": 0.0,
@@ -2045,20 +2062,6 @@
       "Nov": 0.0,
       "Dec": 0.0
     },
-    "Strategist": {
-      "Jan": 0.0,
-      "Feb": 0.0,
-      "Mar": 0.0,
-      "Apr": 0.0,
-      "May": 0.0,
-      "Jun": 16.0,
-      "Jul": 0.0,
-      "Aug": 0.0,
-      "Sep": 0.0,
-      "Oct": 0.0,
-      "Nov": 0.0,
-      "Dec": 0.0
-    },
     "Videographer / Editor": {
       "Jan": 0.0,
       "Feb": 0.0,
@@ -2066,6 +2069,34 @@
       "Apr": 0.0,
       "May": 0.0,
       "Jun": 24.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
+    "Designer": {
+      "Jan": 0.0,
+      "Feb": 0.0,
+      "Mar": 0.0,
+      "Apr": 0.0,
+      "May": 0.0,
+      "Jun": 8.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
+    "NaN": {
+      "Jan": 0.0,
+      "Feb": 0.0,
+      "Mar": 0.0,
+      "Apr": 0.0,
+      "May": 0.0,
+      "Jun": 12652.0,
       "Jul": 0.0,
       "Aug": 0.0,
       "Sep": 0.0,
