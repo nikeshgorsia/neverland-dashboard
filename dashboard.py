@@ -2103,18 +2103,33 @@ with tab_sow:
                         st.session_state.pop(f"sow_val_{src}", None)
                         _jobs_changed = True
                     if c5.button("Remove", key=f"rm_sow_{src}"):
-                        st.session_state["sow_data"] = st.session_state["sow_data"][
-                            st.session_state["sow_data"]["_source"] != src
-                        ].reset_index(drop=True)
-                        try:
-                            save_sow_data(st.session_state["sow_data"])
-                        except Exception:
-                            pass
-                        st.rerun()
+                        st.session_state["_confirm_remove_src"] = src
                 if _jobs_changed:
                     st.session_state["sow_schedule"]["_job_numbers"] = _job_numbers
                     st.session_state["sow_schedule"]["_sow_values"]  = _sow_values
                     save_sow_schedule(st.session_state["sow_schedule"])
+
+            @st.dialog("Remove SoW file?")
+            def _confirm_remove_dialog(src):
+                proj_label = src.rsplit(".", 1)[0]
+                st.warning(f"Are you sure you want to remove **{proj_label}**? This cannot be undone.")
+                c1, c2 = st.columns(2)
+                if c1.button("Yes, remove", type="primary"):
+                    st.session_state["sow_data"] = st.session_state["sow_data"][
+                        st.session_state["sow_data"]["_source"] != src
+                    ].reset_index(drop=True)
+                    try:
+                        save_sow_data(st.session_state["sow_data"])
+                    except Exception:
+                        pass
+                    st.session_state.pop("_confirm_remove_src", None)
+                    st.rerun()
+                if c2.button("Cancel"):
+                    st.session_state.pop("_confirm_remove_src", None)
+                    st.rerun()
+
+            if "_confirm_remove_src" in st.session_state:
+                _confirm_remove_dialog(st.session_state["_confirm_remove_src"])
 
             @st.dialog("Role Breakdown by Client", width="large")
             def _show_role_breakdown(role_name, dept_name):
