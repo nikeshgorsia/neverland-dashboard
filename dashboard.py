@@ -2065,11 +2065,17 @@ with tab_sow:
                     cur_client = sub["Client"].iloc[0]  if not sub.empty else ""
                     cur_jobs   = _job_numbers.get(cur_proj, "")
                     cur_value  = _sow_values.get(cur_proj, "")
+                    # Format stored number as £12,652 for display
+                    def _fmt_sow_val(v):
+                        try:
+                            return f"£{int(float(str(v).replace('£','').replace(',',''))):,}" if v else ""
+                        except (ValueError, TypeError):
+                            return v
                     # Pre-initialise session state to avoid value= conflicts
                     if f"jobs_{src}" not in st.session_state:
                         st.session_state[f"jobs_{src}"] = cur_jobs
                     if f"sow_val_{src}" not in st.session_state:
-                        st.session_state[f"sow_val_{src}"] = cur_value
+                        st.session_state[f"sow_val_{src}"] = _fmt_sow_val(cur_value)
                     c1, c2, c3, c4, c5 = st.columns([3, 2, 1.5, 1.5, 1])
                     new_proj   = c1.text_input("Project", value=cur_proj, key=f"proj_name_{src}", label_visibility="collapsed", placeholder="Project name", help=src)
                     _client_opts = [""] + _pipe_clients
@@ -2089,8 +2095,12 @@ with tab_sow:
                     if new_jobs != cur_jobs:
                         _job_numbers[new_proj] = new_jobs
                         _jobs_changed = True
-                    if new_value != cur_value:
-                        _sow_values[new_proj] = new_value
+                    _raw_new = str(new_value).replace("£", "").replace(",", "").strip()
+                    _raw_cur = str(cur_value).replace("£", "").replace(",", "").strip()
+                    if _raw_new != _raw_cur:
+                        _sow_values[new_proj] = _raw_new
+                        # Reformat display value in session state
+                        st.session_state[f"sow_val_{src}"] = _fmt_sow_val(_raw_new)
                         _jobs_changed = True
                     if c5.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
