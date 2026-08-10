@@ -26,10 +26,14 @@
       "Head of Design": 112.0,
       "Senior Designer": 150.0,
       "Head of Production": 14.0,
-      "Executive Producer": 42.0
+      "Executive Producer": 42.0,
+      "NaN": NaN
     },
     "_rate_overrides": {
       "Executive Producer": 136.0
+    },
+    "_role_name_overrides": {
+      "NaN": "Grand Total \u00a3"
     },
     "CEO": {
       "Jan": 3.5,
@@ -248,6 +252,20 @@
       "Apr": 0.0,
       "May": 0.0,
       "Jun": 0.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
+    "NaN": {
+      "Jan": 120674.0,
+      "Feb": 133294.0,
+      "Mar": 128634.0,
+      "Apr": 130010.0,
+      "May": 33370.0,
+      "Jun": 16890.0,
       "Jul": 0.0,
       "Aug": 0.0,
       "Sep": 0.0,
