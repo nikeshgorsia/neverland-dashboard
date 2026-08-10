@@ -356,15 +356,27 @@ with st.sidebar:
 
 @st.dialog("Set monthly split for new SoW", width="large")
 def _sow_split_dialog(proj_name, total_hours, source_name):
-    _MS_D = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    _MS_D_25 = ["Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25"]
+    _MS_D_26 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    _MS_D    = _MS_D_25 + _MS_D_26
+    _MO_LABELS = {m: m for m in _MS_D_25}
+    _MO_LABELS.update({m: m[:3]+" 26" for m in _MS_D_26})
     st.markdown(f"**{proj_name}** — {total_hours:,.0f} total hours")
     st.caption("Enter the % of hours for each month. Blank = 0%. Total must equal 100%.")
-    r1 = st.columns(6)
-    r2 = st.columns(6)
+    st.markdown("**2025**")
+    r25a = st.columns(6)
+    r25b = st.columns(6)
+    st.markdown("**2026**")
+    r26a = st.columns(6)
+    r26b = st.columns(6)
     pcts = {}
-    for i, m in enumerate(_MS_D):
-        col = r1[i] if i < 6 else r2[i - 6]
-        pcts[m] = col.number_input(m, min_value=0.0, max_value=100.0, value=0.0,
+    for i, m in enumerate(_MS_D_25):
+        col = r25a[i] if i < 6 else r25b[i - 6]
+        pcts[m] = col.number_input(_MO_LABELS[m], min_value=0.0, max_value=100.0, value=0.0,
+                                   step=0.5, key=f"split_{source_name}_{m}", label_visibility="visible")
+    for i, m in enumerate(_MS_D_26):
+        col = r26a[i] if i < 6 else r26b[i - 6]
+        pcts[m] = col.number_input(_MO_LABELS[m], min_value=0.0, max_value=100.0, value=0.0,
                                    step=0.5, key=f"split_{source_name}_{m}", label_visibility="visible")
     total_pct = sum(pcts.values())
     if total_pct > 0:
@@ -375,7 +387,6 @@ def _sow_split_dialog(proj_name, total_hours, source_name):
             st.session_state["sow_schedule"] = {}
         schedule = st.session_state["sow_schedule"]
         proj_sched = {"_active_months": [m for m, p in pcts.items() if p > 0]}
-        # Load roles for this project
         _sow = st.session_state.get("sow_data", pd.DataFrame())
         _proj_rows = _sow[_sow["_source"] == source_name]
         _role_totals = _proj_rows.groupby("Role")["Total Hours"].sum()
@@ -2158,7 +2169,9 @@ with tab_sow:
                     st.session_state["sow_schedule"] = _schedule
                 except Exception:
                     _schedule = {}
-            _MS_ALL = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _MS_25  = ["Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25"]
+            _MS_26  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _MS_ALL = _MS_25 + _MS_26
             _role_scheduled: dict = {}
             # Sum saved monthly splits; fall back to SoW total for unsaved roles
             _sow_role_totals = (
@@ -2233,7 +2246,9 @@ with tab_sow:
         if sow_df.empty:
             st.info("No data yet. Upload a Scope of Work file in the Summary view first.")
         else:
-            _MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _MS_25 = ["Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25"]
+            _MS_26 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+            _MS    = _MS_25 + _MS_26
             if "sow_schedule" not in st.session_state:
                 try:
                     st.session_state["sow_schedule"] = load_sow_schedule()
@@ -2516,9 +2531,14 @@ with tab_sow:
                     }""")
                     _month_fmt = JsCode("function(p){ if(p.node&&p.node.data&&p.node.data['_is_grand_fee']) return p.value!=null?'£'+Math.round(p.value).toLocaleString():'£0'; return p.value?parseFloat(p.value).toFixed(1):'0.0'; }")
 
+                # Header labels: 2025 months keep their label, 2026 months show "Jan 26" etc.
+                _month_header = {m: m for m in _MS_25}
+                _month_header.update({m: m[:3]+" 26" for m in _MS_26})
                 for m in _MS:
-                    _left_border = "3px solid #cbd5e1" if m == "Jan" else None
+                    # Left border separates 2025 from 2026 (at "Jan") and marks Jan 25 start
+                    _left_border = "3px solid #cbd5e1" if m in ("Jan 25", "Jan") else None
                     col_kwargs = dict(
+                        header_name=_month_header[m],
                         type=["numericColumn"],
                         cellStyle={"textAlign": "right", "borderLeft": _left_border} if _left_border else {"textAlign": "right"},
                         valueFormatter=_month_fmt,
@@ -2621,7 +2641,8 @@ with tab_sow:
 
 
 # ── Floating AI Chat ──────────────────────────────────────────────────────────
-_CHAT_MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+_CHAT_MS = ["Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25",
+            "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
 _CHAT_TOOLS = [
     {
