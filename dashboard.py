@@ -2099,8 +2099,8 @@ with tab_sow:
                     _raw_cur = str(cur_value).replace("£", "").replace(",", "").strip()
                     if _raw_new != _raw_cur:
                         _sow_values[new_proj] = _raw_new
-                        # Reformat display value in session state
-                        st.session_state[f"sow_val_{src}"] = _fmt_sow_val(_raw_new)
+                        # Drop key so it re-initialises as formatted on next rerun
+                        st.session_state.pop(f"sow_val_{src}", None)
                         _jobs_changed = True
                     if c5.button("Remove", key=f"rm_sow_{src}"):
                         st.session_state["sow_data"] = st.session_state["sow_data"][
