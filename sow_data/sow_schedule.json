@@ -1442,6 +1442,12 @@
       "Nov",
       "Dec"
     ],
+    "_total_overrides": {
+      "NaN": NaN
+    },
+    "_role_name_overrides": {
+      "NaN": "Grand Total \u00a3"
+    },
     "Head of Client Service": {
       "Jan": 12.0,
       "Feb": 0.0,
@@ -1570,6 +1576,20 @@
     },
     "Producer": {
       "Jan": 16.0,
+      "Feb": 0.0,
+      "Mar": 0.0,
+      "Apr": 0.0,
+      "May": 0.0,
+      "Jun": 0.0,
+      "Jul": 0.0,
+      "Aug": 0.0,
+      "Sep": 0.0,
+      "Oct": 0.0,
+      "Nov": 0.0,
+      "Dec": 0.0
+    },
+    "NaN": {
+      "Jan": 26160.0,
       "Feb": 0.0,
       "Mar": 0.0,
       "Apr": 0.0,
