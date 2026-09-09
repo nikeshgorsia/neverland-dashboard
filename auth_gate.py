@@ -9,11 +9,12 @@ Usage:
             ... render restricted content ...
 """
 import random
-import smtplib
 import time
-from email.mime.text import MIMEText
 
+import requests
 import streamlit as st
+
+from sharepoint_sync import get_app_token
 
 ALLOWED_DOMAIN = "imagineneverland.com"
 CODE_TTL_SECONDS = 10 * 60
@@ -38,24 +39,39 @@ def _is_allowed(email: str, key_prefix: str) -> bool:
 
 
 def _send_code(email: str, code: str) -> None:
-    host = st.secrets["SMTP_HOST"]
-    port = int(st.secrets["SMTP_PORT"])
-    user = st.secrets["SMTP_USER"]
-    password = st.secrets["SMTP_PASSWORD"]
-    sender = st.secrets.get("SMTP_FROM", user)
+    """Send the verification code via Microsoft Graph (app-only), not SMTP.
 
-    msg = MIMEText(
-        f"Your verification code is: {code}\n\n"
-        "This code expires in 10 minutes. If you didn't request this, you can ignore this email."
+    Many Microsoft 365 tenants disable legacy SMTP AUTH outright, so this uses
+    the same app-only Graph token already used for SharePoint sync instead.
+    Requires the Mail.Send application permission (admin-consented) on that
+    Azure AD app registration.
+    """
+    sender = st.secrets.get("SMTP_FROM") or st.secrets["SMTP_USER"]
+    token = get_app_token()
+
+    body = {
+        "message": {
+            "subject": "Your Neverland Finance verification code",
+            "body": {
+                "contentType": "Text",
+                "content": (
+                    f"Your verification code is: {code}\n\n"
+                    "This code expires in 10 minutes. If you didn't request this, "
+                    "you can ignore this email."
+                ),
+            },
+            "toRecipients": [{"emailAddress": {"address": email}}],
+        },
+        "saveToSentItems": "false",
+    }
+    resp = requests.post(
+        f"https://graph.microsoft.com/v1.0/users/{sender}/sendMail",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=body,
+        timeout=15,
     )
-    msg["Subject"] = "Your Neverland Finance verification code"
-    msg["From"] = sender
-    msg["To"] = email
-
-    with smtplib.SMTP(host, port, timeout=15) as server:
-        server.starttls()
-        server.login(user, password)
-        server.sendmail(sender, [email], msg.as_string())
+    if resp.status_code >= 300:
+        raise ValueError(f"Graph sendMail failed ({resp.status_code}): {resp.text[:300]}")
 
 
 def _reset(key_prefix: str, stage_key: str) -> None:
