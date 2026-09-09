@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+from auth_gate import require_auth
+
 st.set_page_config(
     page_title="Neverland Finance",
     page_icon="assets/Neverland_Pink_N_1x1.png",
@@ -458,7 +460,7 @@ def _clean_val(v):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 st.markdown(f"<h1 style='color:{NV_DARK}'>Neverland Dashboard</h1>", unsafe_allow_html=True)
-tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope, tab_revenue, tab_sow = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout", "Revenue Tracker", "Capacity Planning"])
+tab_pipeline, tab_pl, tab_bva, tab_cap, tab_scope, tab_revenue, tab_sow, tab_budget2027 = st.tabs(["Pipeline", "P&L", "Budget vs Actual", "Capacity", "Capacity vs Chargeout", "Revenue Tracker", "Capacity Planning", "2027 Budget"])
 
 CATEGORY_COLORS = {
     "Confirmed Revenue": "#E0EAF6",
@@ -2639,6 +2641,12 @@ with tab_sow:
                     except Exception:
                         pass
 
+
+# ── 2027 Budget Tab ─────────────────────────────────────────────────────────────
+with tab_budget2027:
+    if require_auth("budget_2027"):
+        st.caption(f"Signed in as {st.session_state.get('budget_2027_email', '')}")
+        st.info("2027 salary budget goes here.")
 
 # ── Floating AI Chat ──────────────────────────────────────────────────────────
 _CHAT_MS = ["Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25",
